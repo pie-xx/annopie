@@ -18,11 +18,13 @@ class ImagePageState extends State<ImagePage> {
   late ImageStreamListener ilistener;
   late Image img; 
   late bool done = false;
-  late int width;
-  late int height;
+  late int pwidth;
+  late int pheight;
+  late double vwidth;
+  late double vheight;
   late double aliX;
   late double aliY;
-  late double baseratio;
+  //late double baseratio;
   late double magratio;
   late Container ivew;
 
@@ -34,13 +36,14 @@ class ImagePageState extends State<ImagePage> {
   int nextpagecount=0;
   int beforepagecount = 0;
   String curfile = "";
-
+    double _widthFactor=1.0;
+    double _heightFactor=1.0;
   @override
   void initState() {
     // TODO: implement initState
     curfile = widget.path??"";
 
-    magratio = 2.0;
+    magratio = 1.0;
     aliX=0.0;
     aliY=0.0;
 
@@ -59,25 +62,20 @@ class ImagePageState extends State<ImagePage> {
       (ImageInfo info, bool _) { 
           completer.complete(info.image);
           print(sprintf("image %s %d x %d", [widget.path, info.image.width, info.image.height]));
-          width = info.image.width;
-          height = info.image.height;
+          pwidth = info.image.width;
+          pheight = info.image.height;
+
+          vwidth = MediaQuery.of(context).size.width;
+          vheight = MediaQuery.of(context).size.height;
 
           done = true;
 
-          if(width > height){
-            baseratio =  (MediaQuery.of(context).size.width / width) /(MediaQuery.of(context).size.height / height) ;
-          }else{
-            baseratio =  (MediaQuery.of(context).size.height / height) /(MediaQuery.of(context).size.width / width) ;
-          }
           setState(() {});
       });
 
     img.image
         .resolve(new ImageConfiguration())
         .addListener(ilistener);
-
-    
-
   }
 
   @override
@@ -86,14 +84,17 @@ class ImagePageState extends State<ImagePage> {
       return Container();
     }
 
-    double _widthFactor;
-    double _heightFactor;
-    if(width > height){
-      _widthFactor = baseratio / magratio;
+
+    if(vwidth < vheight){
+      double cwidth = ( (vwidth as double) / vheight ) * pheight;
+
+      _widthFactor = ( cwidth / pwidth ) / magratio;
       _heightFactor = 1.0 / magratio;
     }else{
+      double cheight = ( (vheight as double) / vwidth ) * pwidth;
+
       _widthFactor = 1.0 / magratio;
-      _heightFactor = 1.0 / magratio;
+      _heightFactor = ( cheight / pheight ) / magratio;
     }
 
     ivew = 
@@ -133,7 +134,7 @@ class ImagePageState extends State<ImagePage> {
             double dy = details.focalPoint.dy - oldY;
             oldX = details.focalPoint.dx;
             oldY = details.focalPoint.dy;
-            aliX = aliX - dx * baseratio / 100;
+            aliX = aliX - dx  / 100;
             if( aliX < -1.0){
               aliX = -1.0;
             }
