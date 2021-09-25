@@ -92,12 +92,12 @@ class ImagePageState extends State<ImagePage> {
     }
 
     if(vwidth < vheight){
-      double cwidth = ( (vwidth as double) / vheight ) * pheight;
+      double cwidth = ( vwidth / vheight ) * pheight;
 
       _widthFactor = ( cwidth / pwidth ) / magratio;
       _heightFactor = 1.0 / magratio;
     }else{
-      double cheight = ( (vheight as double) / vwidth ) * pwidth;
+      double cheight = ( vheight / vwidth ) * pwidth;
 
       _widthFactor = 1.0 / magratio;
       _heightFactor = ( cheight / pheight ) / magratio;
@@ -208,7 +208,7 @@ class ImagePageState extends State<ImagePage> {
         );
   }
 
-  void erase_bar(){
+  void eraseBar(){
     setState(() {              
       _visible = false;
     });
@@ -251,7 +251,7 @@ class ImgPageBottomBar {
         ],
         onTap:(index) async {  
           switch(index) {
-            case 0: callback.erase_bar(); break; 
+            case 0: callback.eraseBar(); break; 
             case 1: //callback.contrast(200); break;
             case 2: //callback.contrast(150); break;
             case 3: 

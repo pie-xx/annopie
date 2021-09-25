@@ -9,9 +9,9 @@ import 'image_page.dart';
 import 'folder_prop.dart';
 
 class FileListPage extends StatefulWidget {
-  FileListPage({Key? key, required String this.targetdir, required String this.olddir}) : super(key: key);
-  final String targetdir;
-  final String olddir;
+  FileListPage({Key? key, this.targetdir, this.olddir}) : super(key: key);
+  final String? targetdir;
+  final String? olddir;
 
   @override
   FileListPageState createState() => FileListPageState();
@@ -22,7 +22,7 @@ class FileListPageState extends State<FileListPage> {
 
   String selectedfile = "";
 
-  bool mklist_done = false;
+  bool mkListDone = false;
 
   late ScrollController _scrollController;
   late FolderProp folderProp;
@@ -40,11 +40,11 @@ class FileListPageState extends State<FileListPage> {
   void didChangeDependencies() async {
     super.didChangeDependencies();
 
-    if( widget.targetdir != ""){
-      lastdir = widget.targetdir;
-    }else{
+    lastdir = widget.targetdir??"";
+    if(lastdir == "" ){
       lastdir = await getDefaultDir();
     }
+    print(sprintf("%s -> %s", [widget.targetdir, lastdir]));
 
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setString('lastdir', lastdir);
@@ -82,7 +82,7 @@ class FileListPageState extends State<FileListPage> {
       fis.add(mkfitem( p ));
     }
 
-    mklist_done=true;
+    mkListDone=true;
   }
 
   @override
@@ -94,7 +94,7 @@ class FileListPageState extends State<FileListPage> {
                 icon: const Icon(Icons.folder),
                 tooltip: 'change directory',
                 onPressed: () async {
-                  var res = await InputDialog(context, lastdir);
+                  var res = await inputDialog(context, lastdir);
                   print(sprintf("response of InputDialog = %s",[res]));
                   if( res != "" ){                                      
                     Navigator.push(
@@ -107,8 +107,8 @@ class FileListPageState extends State<FileListPage> {
                 },
               );
 
-    if( lastdir=="" || mklist_done==false ){
-      return Scaffold(appBar: AppBar(title: Text("Loading..."),actions:[cdbtn]),);
+    if( lastdir=="" || mkListDone==false ){
+      return Scaffold(appBar: AppBar(title: Text("Loading... ["+lastdir+"]"),actions:[cdbtn]),);
     }
     if(lastdir.endsWith("/")){
       lastdir = lastdir.substring(0,lastdir.length-1);
@@ -247,7 +247,7 @@ class FileListPageState extends State<FileListPage> {
     return lastdir;
   }
 
-  Future<String> InputDialog(BuildContext context, String lastdir) async {
+  Future<String> inputDialog(BuildContext context, String lastdir) async {
     final textController = TextEditingController();
     textController.text = lastdir;
 
