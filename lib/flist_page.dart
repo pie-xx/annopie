@@ -1,6 +1,4 @@
 import 'dart:io';
-import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
@@ -8,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sprintf/sprintf.dart';
 
 import 'image_page.dart';
+import 'folder_prop.dart';
 
 class FileListPage extends StatefulWidget {
   FileListPage({Key? key, required String this.targetdir, required String this.olddir}) : super(key: key);
@@ -20,7 +19,7 @@ class FileListPage extends StatefulWidget {
 
 class FileListPageState extends State<FileListPage> {
   String lastdir = "";
-  late String _target;
+
   String selectedfile = "";
 
   bool mklist_done = false;
@@ -54,21 +53,20 @@ class FileListPageState extends State<FileListPage> {
 
   Future<void> makeFolderList() async {
     folderProp = FolderProp(lastdir);
-    Directory pDir = Directory(lastdir);
 
     ListTile parentEntry =
       ListTile(
             leading: const Icon(Icons.folder),
             title: Text(".."),
-            subtitle: Text( pDir.parent.path ),
+            subtitle: Text( folderProp.parentpath() ),
             onTap: () => {
-              if( pDir.parent.path==widget.olddir){
+              if( folderProp.parentpath()==widget.olddir){
                 Navigator.pop(this.context)
               }else{                
                 Navigator.push(
                   this.context, 
                   MaterialPageRoute(
-                    builder: (context) => FileListPage( targetdir: pDir.parent.path, olddir: lastdir, )
+                    builder: (context) => FileListPage( targetdir: folderProp.parentpath(), olddir: lastdir, )
                   )
                 )
               }
@@ -90,6 +88,7 @@ class FileListPageState extends State<FileListPage> {
   @override
   Widget build(BuildContext context) {
     makeFolderList();
+  
     IconButton cdbtn =
               IconButton(
                 icon: const Icon(Icons.folder),
@@ -297,7 +296,7 @@ class FileListPageState extends State<FileListPage> {
     Other
   }
 
-   CType check( FileSystemEntity p ){
+  CType check( FileSystemEntity p ){
     switch( p.statSync().type ){
       case FileSystemEntityType.directory:
         return CType.Folder;
@@ -319,32 +318,3 @@ class FileListPageState extends State<FileListPage> {
     
     return CType.Other;
   }
-
-class FolderProp {
-  late String lastdir;
-  late List plist;
-
-  FolderProp(String _lastdir){
-    lastdir=_lastdir;
-    plist=[];
-    reload();
-  }
-  
-  reload(){
-    try{
-      plist = Directory(lastdir).listSync();
-      plist.sort((a,b) => a.path.compareTo(b.path));
-    }catch(e){
-      print(e);
-    }
-  }
-
-  int index(String path){
-    for( int n = 0; n < plist.length; ++n ){
-      if( plist[n].path.toString().endsWith(path) ){
-        return n;
-      }
-    }
-    return -1;
-  }
-}
