@@ -6,6 +6,10 @@ class FolderProp {
   late Directory pDir;
 
   FolderProp(String _lastdir){
+    File f = File(_lastdir);
+    if( f.statSync().type != FileSystemEntityType.directory ){
+      _lastdir = f.parent.path;
+    }
     lastdir=_lastdir;
     pDir = Directory(lastdir);
     plist=[];
