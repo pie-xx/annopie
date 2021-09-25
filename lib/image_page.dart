@@ -1,10 +1,13 @@
-import 'dart:typed_data';
-
-import 'package:flutter/material.dart';
 import 'dart:io';
 import 'dart:ui' as ui;
 import 'dart:async';
+import 'dart:typed_data';
+
+import 'package:flutter/material.dart';
 import 'package:sprintf/sprintf.dart';
+import 'package:image/image.dart' as imgLib;
+
+import 'folder_prop.dart';
 
 class ImagePage extends StatefulWidget {
   ImagePage({Key? key, this.path}) : super(key: key);
@@ -21,7 +24,7 @@ class ImagePageState extends State<ImagePage> {
   late Completer<ui.Image> completer;
   late ImageStreamListener ilistener;
   late Image img; 
-  late bool done = false;
+  //late bool done = false;
   late int pwidth;
   late int pheight;
   late double vwidth;
@@ -48,7 +51,7 @@ class ImagePageState extends State<ImagePage> {
   @override
   void initState() {
 
-    curfile = widget.path??"";
+    loadImage(widget.path??"");
 
     magratio = 1.0;
     aliX=0.0;
@@ -63,33 +66,24 @@ class ImagePageState extends State<ImagePage> {
 
     vwidth = MediaQuery.of(context).size.width;
     vheight = MediaQuery.of(context).size.height;
+  }
 
-    imgbin = File(curfile).readAsBytesSync();
+  void loadImage(String path){
+    imgbin = File(path).readAsBytesSync();
+    var image = imgLib.decodeImage(imgbin)!;
+    pwidth = image.width;
+    pheight = image.height;
+
     img = Image.memory(imgbin);
 
-    completer = new Completer<ui.Image>();
-    ilistener = new ImageStreamListener(
-      (ImageInfo info, bool _) { 
-          completer.complete(info.image);
-          print(sprintf("image %s %d x %d", [widget.path, info.image.width, info.image.height]));
-          pwidth = info.image.width;
-          pheight = info.image.height;
-
-          done = true;
-
-          setState(() {});
-      });
-
-    img.image
-        .resolve(new ImageConfiguration())
-        .addListener(ilistener);
+    curfile = path;
   }
 
   @override
   Widget build(BuildContext context) {
-    if( ! done ){
-      return Container();
-    }
+    //if( ! done ){
+    //  return Container();
+    //}
 
     if(vwidth < vheight){
       double cwidth = ( vwidth / vheight ) * pheight;
@@ -214,6 +208,45 @@ class ImagePageState extends State<ImagePage> {
     });
   }
 
+  nextpage(){
+    try {
+      var folderprop = FolderProp(curfile);
+      bool find = false;
+      for( var p in folderprop.plist ){
+        if( find ){
+          setState(() {
+            loadImage(p.path);
+            aliX=0.0;
+            aliY=0.0;
+          });
+          return;
+        }
+        if( p.path == curfile ){
+          find = true;
+        }
+      }
+    }catch(e){
+    }
+  }
+
+  beforepage(){
+    try {
+      var folderprop = FolderProp(curfile);
+      String beforefile = folderprop.plist[0].path;
+      for( var p in folderprop.plist ){
+        if( p.path == curfile ){
+          setState(() {
+            loadImage(beforefile);
+            aliX=0.0;
+            aliY=0.0;
+          });
+          return;
+        }
+      }
+    }catch(e){
+    }
+  }
+
 }
 
 
@@ -257,8 +290,8 @@ class ImgPageBottomBar {
             case 3: 
               //await AnnoDialog( context, ).showDialog(callback.curfile);
               break;
-            case 4: //callback.beforepage(); break;
-            case 5: //callback.nextpage(); break;
+            case 4: callback.beforepage(); break;
+            case 5: callback.nextpage(); break;
           }
         },
         type: BottomNavigationBarType.fixed,
