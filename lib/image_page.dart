@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'dart:ui' as ui;
@@ -14,6 +16,8 @@ class ImagePage extends StatefulWidget {
 // MediaQuery.of(context).size  Size(462.0, 876.1)
 
 class ImagePageState extends State<ImagePage> {
+  late Uint8List imgbin;
+
   late Completer<ui.Image> completer;
   late ImageStreamListener ilistener;
   late Image img; 
@@ -36,11 +40,14 @@ class ImagePageState extends State<ImagePage> {
   int nextpagecount=0;
   int beforepagecount = 0;
   String curfile = "";
-    double _widthFactor=1.0;
-    double _heightFactor=1.0;
+  double _widthFactor=1.0;
+  double _heightFactor=1.0;
+
+  bool _visible = true;
+
   @override
   void initState() {
-    // TODO: implement initState
+
     curfile = widget.path??"";
 
     magratio = 1.0;
@@ -54,19 +61,19 @@ class ImagePageState extends State<ImagePage> {
   void didChangeDependencies() async {
     super.didChangeDependencies();
 
-    img = Image.file(File(curfile));
+    vwidth = MediaQuery.of(context).size.width;
+    vheight = MediaQuery.of(context).size.height;
+
+    imgbin = File(curfile).readAsBytesSync();
+    img = Image.memory(imgbin);
 
     completer = new Completer<ui.Image>();
-
     ilistener = new ImageStreamListener(
       (ImageInfo info, bool _) { 
           completer.complete(info.image);
           print(sprintf("image %s %d x %d", [widget.path, info.image.width, info.image.height]));
           pwidth = info.image.width;
           pheight = info.image.height;
-
-          vwidth = MediaQuery.of(context).size.width;
-          vheight = MediaQuery.of(context).size.height;
 
           done = true;
 
@@ -83,7 +90,6 @@ class ImagePageState extends State<ImagePage> {
     if( ! done ){
       return Container();
     }
-
 
     if(vwidth < vheight){
       double cwidth = ( (vwidth as double) / vheight ) * pheight;
@@ -116,8 +122,17 @@ class ImagePageState extends State<ImagePage> {
               ),
             ),
         );
+    
+    var toolbar = Visibility(
+      visible: _visible,
+      child: ImgPageBottomBar.build(context, this),
+    );
 
-      return scallview();
+    return Scaffold(
+        body: scallview(),
+        bottomNavigationBar:
+          toolbar
+      );
   }
 
   GestureDetector scallview(){    
@@ -185,10 +200,68 @@ class ImagePageState extends State<ImagePage> {
             });
           },
           onLongPressMoveUpdate: (detail) async {
-            print("onLongPressMoveUpdate up");
+            setState(() {              
+              _visible = true;
+            });
           },
           child: ivew,
         );
   }
 
+  void erase_bar(){
+    setState(() {              
+      _visible = false;
+    });
+  }
+
+}
+
+
+class ImgPageBottomBar {
+
+  static BottomNavigationBar build( BuildContext context, ImagePageState callback ){
+    return 
+      BottomNavigationBar( 
+        items: [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.close),
+            label: "close menu",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.brightness_high),
+            label: "high",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.brightness_low),
+            label: "low",
+          ),
+          BottomNavigationBarItem(
+            backgroundColor: Colors.grey.shade400,
+            icon: Icon(Icons.announcement),
+            label: "annotation",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.navigate_before),
+            label: "before",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.navigate_next),
+            label: "next",
+          ),
+        ],
+        onTap:(index) async {  
+          switch(index) {
+            case 0: callback.erase_bar(); break; 
+            case 1: //callback.contrast(200); break;
+            case 2: //callback.contrast(150); break;
+            case 3: 
+              //await AnnoDialog( context, ).showDialog(callback.curfile);
+              break;
+            case 4: //callback.beforepage(); break;
+            case 5: //callback.nextpage(); break;
+          }
+        },
+        type: BottomNavigationBarType.fixed,
+      );
+  } 
 }
