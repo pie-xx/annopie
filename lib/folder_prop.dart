@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:convert';
 
 class FolderProp {
   late String lastdir;
@@ -36,5 +37,49 @@ class FolderProp {
 
   String parentpath(){
     return pDir.parent.path;
+  }
+}
+
+class ViewStat {
+  String lastfile="";
+  String lastdir="";
+  final String statfile = "/.annofilers.json";
+
+  ViewStat(String _lastdir){    
+    File f = File(_lastdir);
+    if( f.statSync().type != FileSystemEntityType.directory ){
+      _lastdir = f.parent.path;
+    }
+    lastdir=_lastdir;
+    reload();
+  }
+
+  reload(){
+    try{
+      File f = File(lastdir+statfile);
+      String fileprop = f.readAsStringSync();
+      Map<String, dynamic> response = jsonDecode(fileprop);
+      lastfile = response['lastfile'];
+
+    }catch(e){
+      print(e);
+    }
+  }
+
+  setLastFile(String fpath){
+    lastfile = getbasename(fpath);
+  }
+
+  static String getbasename(String path){
+    int li = path.lastIndexOf("/");
+    return path.substring(li+1);
+  }
+  save() async {
+    Map<String, dynamic> answer = {};
+    answer['lastfile'] = lastfile;
+    final json = jsonEncode(answer);
+    String jsonstr = json.toString();
+
+    await File(lastdir+statfile).writeAsString(jsonstr);
   }
 }

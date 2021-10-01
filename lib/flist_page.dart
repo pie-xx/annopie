@@ -19,13 +19,13 @@ class FileListPage extends StatefulWidget {
 
 class FileListPageState extends State<FileListPage> {
   String lastdir = "";
-
   String selectedfile = "";
 
   bool mkListDone = false;
 
   late ScrollController _scrollController;
   late FolderProp folderProp;
+  late ViewStat viewstat;
 
   late List<Widget> fis ;
 
@@ -44,11 +44,13 @@ class FileListPageState extends State<FileListPage> {
     if(lastdir == "" ){
       lastdir = await getDefaultDir();
     }
-    print(sprintf("%s -> %s", [widget.targetdir, lastdir]));
+    viewstat = ViewStat(lastdir);
+    selectedfile = viewstat.lastfile;
 
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setString('lastdir', lastdir);
     setState(() {});
+
   }
 
   Future<void> makeFolderList() async {
@@ -211,8 +213,10 @@ class FileListPageState extends State<FileListPage> {
                     builder: (context) => ImagePage(path: p.path) 
                   )
                 );
+                
               setState(() {
-                selectedfile = getbasename(p.path);
+                viewstat.reload();
+                this.selectedfile = viewstat.lastfile;
               });
             },
             dense: false,
@@ -256,7 +260,8 @@ class FileListPageState extends State<FileListPage> {
         builder: (context) {
           return AlertDialog(
             title: Text('Folder'),
-            content: TextField(
+            content: 
+            TextField(
               controller: textController,
 //              decoration: InputDecoration(hintText: "ここに入力"),
             ),

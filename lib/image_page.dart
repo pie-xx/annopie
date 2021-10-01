@@ -46,6 +46,8 @@ class ImagePageState extends State<ImagePage> {
   double _widthFactor=1.0;
   double _heightFactor=1.0;
 
+  late ViewStat viewstat;
+
   bool _visible = true;
 
   @override
@@ -77,6 +79,10 @@ class ImagePageState extends State<ImagePage> {
     img = Image.memory(imgbin);
 
     curfile = path;
+    
+    viewstat = ViewStat(curfile);
+    viewstat.setLastFile(curfile);
+    viewstat.save();
   }
 
   @override
@@ -218,6 +224,8 @@ class ImagePageState extends State<ImagePage> {
             loadImage(p.path);
             aliX=0.0;
             aliY=0.0;
+            viewstat.setLastFile(p.path);
+            viewstat.save();
           });
           return;
         }
@@ -239,9 +247,12 @@ class ImagePageState extends State<ImagePage> {
             loadImage(beforefile);
             aliX=0.0;
             aliY=0.0;
+            viewstat.setLastFile(beforefile);
+            viewstat.save();
           });
           return;
         }
+        beforefile = p.path;
       }
     }catch(e){
     }
