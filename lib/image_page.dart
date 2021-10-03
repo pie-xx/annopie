@@ -48,6 +48,9 @@ class ImagePageState extends State<ImagePage> {
 
   late ViewStat viewstat;
 
+  late double vheightShow;
+  late double vheightHide;
+
   bool _visible = true;
 
   @override
@@ -68,6 +71,10 @@ class ImagePageState extends State<ImagePage> {
 
     vwidth = MediaQuery.of(context).size.width;
     vheight = MediaQuery.of(context).size.height;
+    
+    vheightShow = vheight - 60;
+    vheightHide = vheight;
+    showBar();
   }
 
   void loadImage(String path){
@@ -200,17 +207,23 @@ class ImagePageState extends State<ImagePage> {
             });
           },
           onLongPressMoveUpdate: (detail) async {
-            setState(() {              
-              _visible = true;
-            });
+            showBar();
           },
           child: ivew,
         );
   }
 
+  void showBar() {
+    setState(() {              
+      _visible = true;
+      vheight = vheightShow;
+    });
+  }
+
   void eraseBar(){
     setState(() {              
       _visible = false;
+      vheight = vheightHide;
     });
   }
 
