@@ -91,6 +91,10 @@ class AnnotationProp {
   late List plist;
 
   AnnotationProp(String _lastdir){
+    File f = File(_lastdir);
+    if( f.statSync().type != FileSystemEntityType.directory ){
+      _lastdir = f.parent.path;
+    }
     lastdir=_lastdir;
     plist=[];
     reload();
@@ -139,7 +143,7 @@ class AnnotationProp {
     Annotate anno = annos[ViewStat.getbasename(fname)] ?? Annotate();
     return anno.text;
   }
-  
+
   writeAnnotation(String fname, String annotation){
     fname = ViewStat.getbasename(fname);
     annos.remove( fname );

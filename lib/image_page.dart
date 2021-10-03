@@ -8,6 +8,7 @@ import 'package:sprintf/sprintf.dart';
 import 'package:image/image.dart' as imgLib;
 
 import 'folder_prop.dart';
+import 'input_dialog.dart';
 
 class ImagePage extends StatefulWidget {
   ImagePage({Key? key, this.path}) : super(key: key);
@@ -15,8 +16,6 @@ class ImagePage extends StatefulWidget {
   @override
   ImagePageState createState() => ImagePageState();
 }
-
-// MediaQuery.of(context).size  Size(462.0, 876.1)
 
 class ImagePageState extends State<ImagePage> {
   late Uint8List imgbin;
@@ -312,7 +311,13 @@ class ImgPageBottomBar {
             case 1: //callback.contrast(200); break;
             case 2: //callback.contrast(150); break;
             case 3: 
-              //await AnnoDialog( context, ).showDialog(callback.curfile);
+              String fname = callback.widget.path??"";
+              var annoProp = AnnotationProp(fname);
+              var res = await inputDialog(context, 'Annotation', annoProp.readAnnotation(fname));
+              if( res != "" ){   
+                  annoProp.writeAnnotation(fname, res);
+                  annoProp.save();
+              }
               break;
             case 4: callback.beforepage(); break;
             case 5: callback.nextpage(); break;
