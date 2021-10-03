@@ -248,6 +248,7 @@ class FileListPageState extends State<FileListPage> {
         if( res != "" ){   
           setState(() {                                   
             annoProp.writeAnnotation(fname, res);
+            annoProp.save();
           });
         }
   }
