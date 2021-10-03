@@ -26,6 +26,7 @@ class FileListPageState extends State<FileListPage> {
   late ScrollController _scrollController;
   late FolderProp folderProp;
   late ViewStat viewstat;
+  late AnnotationProp annoProp;
 
   late List<Widget> fis ;
 
@@ -46,6 +47,7 @@ class FileListPageState extends State<FileListPage> {
     }
     viewstat = ViewStat(lastdir);
     selectedfile = viewstat.lastfile;
+    annoProp = AnnotationProp(lastdir);
 
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setString('lastdir', lastdir);
@@ -96,7 +98,7 @@ class FileListPageState extends State<FileListPage> {
                 icon: const Icon(Icons.folder),
                 tooltip: 'change directory',
                 onPressed: () async {
-                  var res = await inputDialog(context, lastdir);
+                  var res = await inputDialog(context, 'Folder', lastdir);
                   print(sprintf("response of InputDialog = %s",[res]));
                   if( res != "" ){                                      
                     Navigator.push(
@@ -204,8 +206,9 @@ class FileListPageState extends State<FileListPage> {
                 return const Text('😢');
               },),
             title: Text(p.path.substring(lastdir.length+1)),
-            subtitle: Text( subtitlestr ),
+            subtitle: Text( annoProp.readAnnotation(p.path) +" "+ subtitlestr ),
             selected: selectedfile==getbasename(p.path),
+            onLongPress: (){ editAnnotation(p.path); },
             onTap: () async {
               await Navigator.push(
                   this.context,
@@ -217,6 +220,7 @@ class FileListPageState extends State<FileListPage> {
               setState(() {
                 viewstat.reload();
                 this.selectedfile = viewstat.lastfile;
+                annoProp.reload();
               });
             },
             dense: false,
@@ -227,6 +231,7 @@ class FileListPageState extends State<FileListPage> {
             title: Text(p.path.substring(lastdir.length+1)),
             subtitle: Text( subtitlestr ),
             selected: selectedfile==getbasename(p.path),
+            onLongPress: (){ editAnnotation(p.path); },
             onTap: () async {
               setState(() {
                 selectedfile = getbasename(p.path);
@@ -235,6 +240,15 @@ class FileListPageState extends State<FileListPage> {
             dense: false,
       );
     } 
+  }
+
+  editAnnotation(String fname) async {
+        var res = await inputDialog(context, 'Annotation', annoProp.readAnnotation(fname));
+        if( res != "" ){   
+          setState(() {                                   
+            annoProp.writeAnnotation(fname, res);
+          });
+        }
   }
 
   Future<String> getDefaultDir() async {
@@ -251,7 +265,7 @@ class FileListPageState extends State<FileListPage> {
     return lastdir;
   }
 
-  Future<String> inputDialog(BuildContext context, String lastdir) async {
+  Future<String> inputDialog(BuildContext context, String title, String lastdir) async {
     final textController = TextEditingController();
     textController.text = lastdir;
 
@@ -259,7 +273,7 @@ class FileListPageState extends State<FileListPage> {
         context: context,
         builder: (context) {
           return AlertDialog(
-            title: Text('Folder'),
+            title: Text(title),
             content: 
             TextField(
               controller: textController,
