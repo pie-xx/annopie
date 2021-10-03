@@ -7,6 +7,7 @@ import 'package:sprintf/sprintf.dart';
 
 import 'image_page.dart';
 import 'folder_prop.dart';
+import 'input_dialog.dart';
 
 class FileListPage extends StatefulWidget {
   FileListPage({Key? key, this.targetdir, this.olddir}) : super(key: key);
@@ -263,39 +264,6 @@ class FileListPageState extends State<FileListPage> {
       print(e.toString());
     }
     return lastdir;
-  }
-
-  Future<String> inputDialog(BuildContext context, String title, String lastdir) async {
-    final textController = TextEditingController();
-    textController.text = lastdir;
-
-    String? res = await showDialog(
-        context: context,
-        builder: (context) {
-          return AlertDialog(
-            title: Text(title),
-            content: 
-            TextField(
-              controller: textController,
-//              decoration: InputDecoration(hintText: "ここに入力"),
-            ),
-            actions: <Widget>[
-              TextButton(
-                child: Text('キャンセル'),
-                onPressed: () {
-                  Navigator.pop(context);
-                },
-              ),
-              TextButton(
-                child: Text('OK'),
-                onPressed: () {
-                  Navigator.pop(context, textController.text );
-                },
-              ),
-            ],
-          );
-        });
-    return res??"";
   }
 
 }
