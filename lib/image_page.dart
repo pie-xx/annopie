@@ -4,8 +4,9 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import 'package:sprintf/sprintf.dart';
 import 'package:image/image.dart' as imgLib;
+
+
 
 import 'folder_prop.dart';
 import 'input_dialog.dart';
@@ -26,12 +27,7 @@ class ImagePageState extends State<ImagePage> {
   //late bool done = false;
   late int pwidth;
   late int pheight;
-  late double vwidth;
-  late double vheight;
-  late double aliX;
-  late double aliY;
-  //late double baseratio;
-  late double magratio;
+
   late Container ivew;
 
   bool scallmode = false;
@@ -42,8 +38,6 @@ class ImagePageState extends State<ImagePage> {
   int nextpagecount=0;
   int beforepagecount = 0;
   String curfile = "";
-  double _widthFactor=1.0;
-  double _heightFactor=1.0;
 
   late ViewStat viewstat;
 
@@ -52,14 +46,13 @@ class ImagePageState extends State<ImagePage> {
 
   bool _visible = true;
 
+  final _transformationController = TransformationController();
+  Matrix4 scalevalue = Matrix4.identity();
+
   @override
   void initState() {
 
     loadImage(widget.path??"");
-
-    magratio = 1.0;
-    aliX=0.0;
-    aliY=0.0;
 
     super.initState();
   }
@@ -68,11 +61,6 @@ class ImagePageState extends State<ImagePage> {
   void didChangeDependencies() async {
     super.didChangeDependencies();
 
-    vwidth = MediaQuery.of(context).size.width;
-    vheight = MediaQuery.of(context).size.height;
-    
-    vheightShow = vheight - 60;
-    vheightHide = vheight;
     showBar();
   }
 
@@ -93,136 +81,46 @@ class ImagePageState extends State<ImagePage> {
 
   @override
   Widget build(BuildContext context) {
-    //if( ! done ){
-    //  return Container();
-    //}
 
-    if(vwidth < vheight){
-      double cwidth = ( vwidth / vheight ) * pheight;
-
-      _widthFactor = ( cwidth / pwidth ) / magratio;
-      _heightFactor = 1.0 / magratio;
-    }else{
-      double cheight = ( vheight / vwidth ) * pwidth;
-
-      _widthFactor = 1.0 / magratio;
-      _heightFactor = ( cheight / pheight ) / magratio;
-    }
-
-    ivew = 
-       Container(
-        width: MediaQuery.of(context).size.width,
-        alignment: Alignment.center,
-        child: 
-        FittedBox(
-            fit: BoxFit.fill,
-            child: ClipRect(
-              child: Container(
-                  child: Align(
-                    alignment: Alignment(aliX, aliY),
-                    widthFactor: _widthFactor,
-                    heightFactor: _heightFactor,
-                    child: img,
-                    ),
-                  ),
-              ),
-            ),
-        );
-    
     var toolbar = Visibility(
       visible: _visible,
       child: ImgPageBottomBar.build(context, this),
     );
 
     return Scaffold(
-        body: scallview(),
+        appBar: AppBar(title: Text(widget.path??"" )),                
+        body: InteractiveViewer(
+            transformationController: _transformationController,
+            onInteractionEnd: (details){
+              print("onInteractionEnd");
+              print(_transformationController.value);
+            },
+            boundaryMargin: const EdgeInsets.all(20.0),
+            minScale: 0.1,
+            maxScale: 64,
+            child: Center(
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  img,
+                ],
+              ),
+            ),
+          ),
         bottomNavigationBar:
           toolbar
       );
   }
 
-  GestureDetector scallview(){    
-        return GestureDetector(
-          onScaleStart: (details){
-            scallmode = true;
-            oldX = details.focalPoint.dx;
-            oldY = details.focalPoint.dy;
-            oldmagratio = magratio;
-          },
-          onScaleUpdate: (details){
-            setState(() {
-            double dx = details.focalPoint.dx - oldX;
-            double dy = details.focalPoint.dy - oldY;
-            oldX = details.focalPoint.dx;
-            oldY = details.focalPoint.dy;
-            aliX = aliX - dx  / 100;
-            if( aliX < -1.0){
-              aliX = -1.0;
-            }
-            if( aliX > 1.0 ){
-              aliX = 1.0;
-            }
-            aliY = aliY - dy /100;
-            if( aliY < -1.1){
-              beforepagecount = beforepagecount + 1;
-              aliY = -1.0;
-              if( beforepagecount > 10){
-                print("before!!");
-                //beforepage();
-              }
-            }else{
-              if( aliY > -1.0 ){
-                beforepagecount = 0;
-              }
-            }
-            if( aliY > 1.1 ){
-              nextpagecount = nextpagecount + 1;
-              aliY = 1.0;
-              if( nextpagecount > 10){
-                print("next!!");
-                //nextpage();
-              }
-            }else{
-              if( aliY < 1.0 ){
-                nextpagecount = 0;
-              }
-            }
-
-            magratio = oldmagratio * details.scale;
-            if( magratio < 0.5 ){
-              magratio = 0.5 ;
-            }
-            if( magratio > 2 ){
-              magratio = 2;
-            }
-            });
-          },
-          onScaleEnd: (detail){
-            scallmode = false;
-          },        
-          onDoubleTap: (){
-            scallmode = false;
-            setState(() {              
-            });
-          },
-          onLongPressMoveUpdate: (detail) async {
-            showBar();
-          },
-          child: ivew,
-        );
-  }
-
   void showBar() {
     setState(() {              
       _visible = true;
-      vheight = vheightShow;
     });
   }
 
   void eraseBar(){
     setState(() {              
       _visible = false;
-      vheight = vheightHide;
     });
   }
 
@@ -234,8 +132,7 @@ class ImagePageState extends State<ImagePage> {
         if( find ){
           setState(() {
             loadImage(p.path);
-            aliX=0.0;
-            aliY=0.0;
+
             viewstat.setLastFile(p.path);
             viewstat.save();
           });
@@ -257,8 +154,7 @@ class ImagePageState extends State<ImagePage> {
         if( p.path == curfile ){
           setState(() {
             loadImage(beforefile);
-            aliX=0.0;
-            aliY=0.0;
+          
             viewstat.setLastFile(beforefile);
             viewstat.save();
           });
@@ -270,6 +166,16 @@ class ImagePageState extends State<ImagePage> {
     }
   }
 
+  resetScale(){
+    _transformationController.value = Matrix4.identity();
+  }
+
+  saveScale(){
+    scalevalue = _transformationController.value;
+  }
+  loadScale(){
+    _transformationController.value = scalevalue;
+  }
 }
 
 
@@ -308,8 +214,8 @@ class ImgPageBottomBar {
         onTap:(index) async {  
           switch(index) {
             case 0: callback.eraseBar(); break; 
-            case 1: //callback.contrast(200); break;
-            case 2: //callback.contrast(150); break;
+            case 1: callback.loadScale(); break;//callback.contrast(200); break;
+            case 2: callback.saveScale(); break;//callback.contrast(150); break;
             case 3: 
               String fname = callback.widget.path??"";
               var annoProp = AnnotationProp(fname);
