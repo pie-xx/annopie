@@ -1,6 +1,9 @@
 import 'dart:io';
 import 'dart:convert';
 
+import 'package:flutter/cupertino.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 class FolderProp {
   late String lastdir;
   late List plist;
@@ -38,50 +41,131 @@ class FolderProp {
   String parentpath(){
     return pDir.parent.path;
   }
+
+  String dirName(){
+    List flist = pDir.path.split("/");
+    return flist.last;
+  }
 }
 
 class ViewStat {
-  String lastfile="";
-  String lastdir="";
-  final String statfile = "/.annofilers.json";
+  String _lastpath="";
+  String _lastfile="";
+  String _lastdir="";
+  String _lastcont="";
+  List<Matrix4> _lastarea = [];
 
-  ViewStat(String _lastdir){    
-    File f = File(_lastdir);
+  final String statfile = "/.annofilers.json";
+  final String KEYfile = "lastfile";
+  final String KEYcont = "lastcont";
+  final String KEYarea = "lastarea";
+
+  ViewStat(String _ldir){    
+    File f = File(_ldir);
     if( f.statSync().type != FileSystemEntityType.directory ){
-      _lastdir = f.parent.path;
+      _ldir = f.parent.path;
     }
-    lastdir=_lastdir;
+    _lastdir=_ldir;
+
     reload();
   }
 
-  reload(){
-    try{
-      File f = File(lastdir+statfile);
-      String fileprop = f.readAsStringSync();
-      Map<String, dynamic> response = jsonDecode(fileprop);
-      lastfile = response['lastfile'];
+  static String getbasename(String path){
+    int bl = path.lastIndexOf("\\");
+    int li = path.lastIndexOf("/");
+    int sp = 0;
+    if( bl > li ){
+      sp = bl + 1;      
+    }else{
+      sp = li + 1;
+    }
+    return path.substring(sp);
+  }
 
-    }catch(e){
-      print(e);
+  void setLastPath(String fpath) async {
+    _lastpath = fpath;
+    SharedPreferences pref = await SharedPreferences.getInstance();
+    await pref.setString(KEYfile, _lastpath );
+  }
+  String getLastFilteTitle(){
+    return getbasename(_lastpath);
+  }
+  String getLastFileFullpath() {
+    return _lastpath;
+  }
+
+  void setLastCont(String _lcont) async {
+    _lastcont = _lcont;
+    SharedPreferences pref = await SharedPreferences.getInstance();
+    await pref.setString(KEYcont, _lastcont );
+  }
+  String getLastCont(){
+    return _lastcont;
+  }
+
+  void setLastArea( List<Matrix4> areas ){
+    _lastarea = areas;
+  }
+  List<Matrix4> getLastArea(){
+    //String areas = _lastarea.toString();
+    return _lastarea;
+  }
+  void loadarea(String areastring){
+    _lastarea.clear();
+    List lines = areastring.split("\n");
+    if( lines.length < 4 )
+      return;
+    for(int lx=0; lx < lines.length; lx=lx+4){
+      List<double> a = [];
+      for(int n=0; n<4; ++n){
+        List plines = lines[n+lx].toString().split("]");
+        if( plines.length < 2 )
+          return;
+        List lv = plines[1].split(",");
+        if( lv.length < 4 )
+          return;
+        for(int m=0; m<4; ++m){
+          a.add( double.parse( lv[m]) );
+        }
+      }
+      Matrix4 area = Matrix4.fromList(a);
+      _lastarea.add(area);
     }
   }
 
-  setLastFile(String fpath){
-    lastfile = getbasename(fpath);
-  }
-
-  static String getbasename(String path){
-    int li = path.lastIndexOf("/");
-    return path.substring(li+1);
+  reload() async {
+    try{
+      File f = File(_lastdir+statfile);
+      String fileprop = f.readAsStringSync();
+      print(fileprop);
+      Map<String, dynamic> response = jsonDecode(fileprop);
+      _lastfile = response[KEYfile];
+      _lastpath = _lastdir + "/" + _lastfile;
+      _lastcont = response[KEYcont];
+      loadarea(response[KEYarea]);
+    }catch(e){
+      print(e);
+      SharedPreferences pref = await SharedPreferences.getInstance();
+      _lastpath = await pref.getString(KEYfile) ?? "";
+      _lastfile = getbasename(_lastpath);
+      _lastcont = await pref.getString(KEYcont) ?? "";
+      loadarea(await pref.getString(KEYarea) ?? "");
+    }
   }
 
   save() async {
     Map<String, dynamic> answer = {};
-    answer['lastfile'] = lastfile;
+    answer[KEYfile] = getLastFilteTitle();
+    answer[KEYcont] = _lastcont;
+    answer[KEYarea] = _lastarea.toString();
     final json = jsonEncode(answer);
     String jsonstr = json.toString();
 
-    await File(lastdir+statfile).writeAsString(jsonstr);
+    try{
+      await File(_lastdir+statfile).writeAsString(jsonstr);
+    }catch(e){
+      print(e);
+    }
   }
 }
 ///////////////////////////////////////

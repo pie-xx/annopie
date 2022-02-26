@@ -4,9 +4,9 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import 'package:image/image.dart' as imgLib;
+//import 'package:image/image.dart' as imgLib;
 
-
+//import 'package:flutter_native_image/flutter_native_image.dart';
 
 import 'folder_prop.dart';
 import 'input_dialog.dart';
@@ -21,19 +21,7 @@ class ImagePage extends StatefulWidget {
 class ImagePageState extends State<ImagePage> {
   late Uint8List imgbin;
 
-  late Completer<ui.Image> completer;
-  late ImageStreamListener ilistener;
   late Image img; 
-  //late bool done = false;
-  late int pwidth;
-  late int pheight;
-
-  late Container ivew;
-
-  bool scallmode = false;
-  double oldX=0.0;
-  double oldY=0.0;
-  double oldmagratio=2.0;
 
   int nextpagecount=0;
   int beforepagecount = 0;
@@ -41,19 +29,18 @@ class ImagePageState extends State<ImagePage> {
 
   late ViewStat viewstat;
 
-  late double vheightShow;
-  late double vheightHide;
-
   bool _visible = true;
 
   final _transformationController = TransformationController();
   Matrix4 scalevalue = Matrix4.identity();
 
+  late FolderProp folderprop;
+  late AppBar appbar;
   @override
   void initState() {
-
-    loadImage(widget.path??"");
-
+    curfile = widget.path??"";
+    loadImage(curfile);
+    folderprop = FolderProp(curfile);
     super.initState();
   }
 
@@ -64,31 +51,26 @@ class ImagePageState extends State<ImagePage> {
     showBar();
   }
 
-  void loadImage(String path){
+  void loadImage(String path) async {
     imgbin = File(path).readAsBytesSync();
-    var image = imgLib.decodeImage(imgbin)!;
-    pwidth = image.width;
-    pheight = image.height;
-
     img = Image.memory(imgbin);
 
     curfile = path;
     
     viewstat = ViewStat(curfile);
-    viewstat.setLastFile(curfile);
+    viewstat.setLastPath(curfile);
     viewstat.save();
   }
 
   @override
   Widget build(BuildContext context) {
-
     var toolbar = Visibility(
       visible: _visible,
       child: ImgPageBottomBar.build(context, this),
     );
 
     return Scaffold(
-        appBar: AppBar(title: Text(widget.path??"" )),                
+        appBar: AppBar(title: Text(folderprop.dirName() )),                
         body: InteractiveViewer(
             transformationController: _transformationController,
             onInteractionEnd: (details){
@@ -124,6 +106,12 @@ class ImagePageState extends State<ImagePage> {
     });
   }
 
+  void toggleBar(){
+    setState(() {
+      _visible = ! _visible;
+    });
+  }
+
   nextpage(){
     try {
       var folderprop = FolderProp(curfile);
@@ -133,7 +121,7 @@ class ImagePageState extends State<ImagePage> {
           setState(() {
             loadImage(p.path);
 
-            viewstat.setLastFile(p.path);
+            viewstat.setLastPath(p.path);
             viewstat.save();
           });
           return;
@@ -148,14 +136,14 @@ class ImagePageState extends State<ImagePage> {
 
   beforepage(){
     try {
-      var folderprop = FolderProp(curfile);
+
       String beforefile = folderprop.plist[0].path;
       for( var p in folderprop.plist ){
         if( p.path == curfile ){
           setState(() {
             loadImage(beforefile);
           
-            viewstat.setLastFile(beforefile);
+            viewstat.setLastPath(beforefile);
             viewstat.save();
           });
           return;
@@ -186,16 +174,20 @@ class ImgPageBottomBar {
       BottomNavigationBar( 
         items: [
           BottomNavigationBarItem(
-            icon: Icon(Icons.close),
-            label: "close menu",
+            icon: Icon(Icons.fit_screen),
+            label: "load",
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.brightness_high),
-            label: "high",
+            icon: Icon(Icons.add_to_queue),
+            label: "save",
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.brightness_low),
-            label: "low",
+            icon: Icon(Icons.no_encryption),
+            label: "",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.no_encryption),
+            label: "",
           ),
           BottomNavigationBarItem(
             backgroundColor: Colors.grey.shade400,
@@ -213,20 +205,21 @@ class ImgPageBottomBar {
         ],
         onTap:(index) async {  
           switch(index) {
-            case 0: callback.eraseBar(); break; 
-            case 1: callback.loadScale(); break;//callback.contrast(200); break;
-            case 2: callback.saveScale(); break;//callback.contrast(150); break;
-            case 3: 
-              String fname = callback.widget.path??"";
+            case 0: callback.loadScale(); break; 
+            case 1: callback.saveScale(); break;
+            case 2: break;
+            case 3: break;
+            case 4: 
+              String fname = callback.curfile;
               var annoProp = AnnotationProp(fname);
               var res = await inputDialog(context, 'Annotation', annoProp.readAnnotation(fname));
-              if( res != "" ){   
+              if( res != null ){   
                   annoProp.writeAnnotation(fname, res);
                   annoProp.save();
               }
               break;
-            case 4: callback.beforepage(); break;
-            case 5: callback.nextpage(); break;
+            case 5: callback.beforepage(); break;
+            case 6: callback.nextpage(); break;
           }
         },
         type: BottomNavigationBarType.fixed,

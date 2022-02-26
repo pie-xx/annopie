@@ -27,11 +27,13 @@ dependencies:
   sprintf:
   path_provider: ^2.0.2
   image:
-
+  #flutter_native_image: ^0.0.6
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.2
-
+  permission_handler:
+  file_picker: ^4.4.0
+  
 dependency_overrides:
   platform: ^3.1.0
 

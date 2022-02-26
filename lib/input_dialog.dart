@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-Future<String> inputDialog(BuildContext context, String title, String lastdir) async {
+Future<String?> inputDialog(BuildContext context, String title, String lastdir) async {
   final textController = TextEditingController();
   textController.text = lastdir;
 
@@ -30,5 +30,5 @@ Future<String> inputDialog(BuildContext context, String title, String lastdir) a
           ],
         );
       });
-  return res??"";
+  return res;
 }
