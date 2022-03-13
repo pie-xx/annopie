@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-//import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sprintf/sprintf.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -52,9 +51,7 @@ class FileListPageState extends State<FileListPage> {
     }
 
     lastdir = widget.targetdir??"";
-  //  if(lastdir == "" ){
-  //    lastdir = await getDefaultDir();
-  //  }
+
     viewstat = ViewStat(lastdir);
     selectedfile = viewstat.getLastFilteTitle();
     annoProp = AnnotationProp(lastdir);
@@ -237,13 +234,7 @@ class FileListPageState extends State<FileListPage> {
     switch( ct ){ 
     case CType.Folder:
       subtitlestr = "";
-      /*
-      try {
-        subtitlestr = sprintf("%8d files", [Directory(p.path).listSync().length]); 
-      }catch(e){
-        subtitlestr = subtitlestr + "  ???";
-      }
-      */
+
       return ListTile(
         leading:  Icon(Icons.folder),
         title:    Text(p.path.substring(lastdir.length+1)),
@@ -346,29 +337,8 @@ class FileListPageState extends State<FileListPage> {
           });
         }
   }
-/*
-  Future<String> getDefaultDir() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    String lastdir = prefs.getString("lastdir") ?? "";
-    try{
-    if( lastdir==""){
-      Directory _tdir = await getApplicationDocumentsDirectory();
-      lastdir = _tdir.path;
-    }
-    }catch(e){
-      print(e.toString());
-    }
-    return lastdir;
-  }
-*/
-}
 
-/*
-  String getbasename(String path){
-    int li = path.lastIndexOf("/");
-    return path.substring(li+1);
-  }
-  */
+}
 
   enum CType {
     Folder,
