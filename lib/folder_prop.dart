@@ -116,8 +116,9 @@ class ViewStat {
     if( lines.length < 4 )
       return;
     for(int lx=0; lx < lines.length; lx=lx+4){
-      List<double> a = [];
+      List ls = [];
       for(int n=0; n<4; ++n){
+        List<double> a = [];
         List plines = lines[n+lx].toString().split("]");
         if( plines.length < 2 )
           return;
@@ -127,8 +128,15 @@ class ViewStat {
         for(int m=0; m<4; ++m){
           a.add( double.parse( lv[m]) );
         }
+        ls.add(a);
       }
-      Matrix4 area = Matrix4.fromList(a);
+      List<double> as = [];
+      for( int x=0; x < 4; ++x) {
+        for( int y=0; y<4; ++y ){
+          as.add(ls[y][x]);
+        }
+      }
+      Matrix4 area = Matrix4.fromList(as);
       _lastarea.add(area);
     }
   }
