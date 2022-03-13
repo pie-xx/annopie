@@ -1,12 +1,8 @@
 import 'dart:io';
-import 'dart:ui' as ui;
-import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-//import 'package:image/image.dart' as imgLib;
-
-//import 'package:flutter_native_image/flutter_native_image.dart';
+import 'package:flutter/src/services/hardware_keyboard.dart';
 
 import 'folder_prop.dart';
 import 'input_dialog.dart';
@@ -33,12 +29,43 @@ class ImagePageState extends State<ImagePage> {
 
   final _transformationController = TransformationController();
   Matrix4 scalevalue = Matrix4.identity();
+  List<Matrix4> areas = [];
+  int aindex = 0;
 
   late FolderProp folderprop;
   late AppBar appbar;
+
+  bool loaddone = false;
+
+  HardwareKeyboard keyboard = HardwareKeyboard.instance;
+
+  static const int KEY_Vup = 0x00070080;
+  static const int KEY_Vdown = 0x00070081;
+  static const int KEY_BackGes = 0x1100000000;
+  static const int KEY_Back = 0x110000009e;
+
+  static const int WKEY_ArrowDown = 0x00070051;
+  static const int WKEY_ArrowUp = 0x00070052;
+  static const int WKEY_Backspace = 0x0007002a;
+  static const int WKEY_Escape = 0x00070029;
+
   @override
   void initState() {
     curfile = widget.path??"";
+
+    viewstat = ViewStat(curfile);
+    areas = viewstat.getLastArea();
+    aindex=0;
+
+    if(areas.length!=0){
+      _transformationController.value = areas[0];
+      aindex=0;
+    }else{
+      _transformationController.value = Matrix4.identity();
+    }
+    print(_transformationController.value);
+
+
     loadImage(curfile);
     folderprop = FolderProp(curfile);
     super.initState();
@@ -48,10 +75,62 @@ class ImagePageState extends State<ImagePage> {
   void didChangeDependencies() async {
     super.didChangeDependencies();
 
+    keyboard.addHandler((event) { 
+      if( event is KeyDownEvent ){
+        switch( event.physicalKey.usbHidUsage ){
+          case KEY_Vdown:
+          case WKEY_ArrowDown:
+            next_area();
+            break;
+          case KEY_Vup:
+          case WKEY_ArrowUp:
+            before_area();
+            break;
+          case KEY_Back:
+          case KEY_BackGes:
+          case WKEY_Backspace:
+          case WKEY_Escape:
+            Navigator.pop(context);
+            break;
+        }
+      }
+      return true;
+    });
+
     showBar();
+    await loadImage(curfile);
+    setState(() {
+      
+    });
+
+
   }
 
-  void loadImage(String path) async {
+  @override
+  void dispose() {
+    print('ImagePageState dispose');
+
+    super.dispose();
+  }
+
+  void kurukuru(){
+            showGeneralDialog(
+              context: context,
+              barrierDismissible: false,
+              transitionDuration: Duration(milliseconds: 250), // ダイアログフェードインmsec
+              barrierColor: Colors.black.withOpacity(0.5), // 画面マスクの透明度
+              pageBuilder: (BuildContext context, Animation animation,
+                  Animation secondaryAnimation) {
+                return Center(
+                  child: CircularProgressIndicator(),
+                );
+              });
+  }
+  void kurukuruOff(){
+    Navigator.pop(context);
+  }
+
+  Future<void>  loadImage(String path) async {
     imgbin = File(path).readAsBytesSync();
     img = Image.memory(imgbin);
 
@@ -60,6 +139,7 @@ class ImagePageState extends State<ImagePage> {
     viewstat = ViewStat(curfile);
     viewstat.setLastPath(curfile);
     viewstat.save();
+    loaddone = true;
   }
 
   @override
@@ -68,30 +148,36 @@ class ImagePageState extends State<ImagePage> {
       visible: _visible,
       child: ImgPageBottomBar.build(context, this),
     );
+    String appbartitle = "${folderprop.index(curfile)}: ${folderprop.dirName()}";
+    if( areas.length > 0 ){
+      appbartitle = "${folderprop.index(curfile)}(${aindex+1}/${areas.length}): ${folderprop.dirName()}";
+    }
+    Text appbarText = Text(appbartitle);
 
-    return Scaffold(
-        appBar: AppBar(title: Text(folderprop.dirName() )),                
-        body: InteractiveViewer(
+    var iviewer = InteractiveViewer(
             transformationController: _transformationController,
             onInteractionEnd: (details){
-              print("onInteractionEnd");
-              print(_transformationController.value);
+              //print("onInteractionEnd");
+              //print(_transformationController.value);
             },
             boundaryMargin: const EdgeInsets.all(20.0),
             minScale: 0.1,
             maxScale: 64,
-            child: Center(
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  img,
-                ],
-              ),
-            ),
-          ),
+            child: 
+                Center( child: img, ),
+          );
+
+    var scaffold = Scaffold(
+        appBar: PreferredSize(
+          preferredSize: Size.fromHeight(32.0),
+          child: AppBar(title: appbarText,)
+        ),  
+        body: iviewer,
         bottomNavigationBar:
           toolbar
       );
+
+    return  scaffold;
   }
 
   void showBar() {
@@ -112,7 +198,51 @@ class ImagePageState extends State<ImagePage> {
     });
   }
 
-  nextpage(){
+  addScale(){
+    setState(() {
+      areas.add(_transformationController.value);
+      aindex = areas.length - 1;
+      viewstat.setLastArea(areas);
+      viewstat.save();
+    });
+  }
+
+  clearScale(){
+    setState(() {
+      areas.clear();
+      aindex = 0;
+      viewstat.setLastArea(areas);
+      viewstat.save();
+    });
+  }
+
+  before_area(){
+    --aindex;
+    if( aindex < 0 ){
+      aindex = areas.length - 1;
+      beforepage();
+    }
+    if( areas.length > 0 ){
+      setState(() {
+        _transformationController.value = areas[aindex];
+      });
+    }
+  }
+  next_area(){
+    ++aindex;
+    if( aindex >= areas.length ){
+      aindex = 0;
+      nextpage();
+    }
+    if( areas.length > 0 ){
+      setState(() {
+        _transformationController.value = areas[aindex];
+      });
+    }
+  }
+
+
+nextpage(){
     try {
       var folderprop = FolderProp(curfile);
       bool find = false;
@@ -174,12 +304,12 @@ class ImgPageBottomBar {
       BottomNavigationBar( 
         items: [
           BottomNavigationBarItem(
-            icon: Icon(Icons.fit_screen),
-            label: "load",
+            icon: Icon(Icons.add_to_queue),
+            label: "add",
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.add_to_queue),
-            label: "save",
+            icon: Icon(Icons.clear_all),
+            label: "clear",
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.no_encryption),
@@ -205,8 +335,8 @@ class ImgPageBottomBar {
         ],
         onTap:(index) async {  
           switch(index) {
-            case 0: callback.loadScale(); break; 
-            case 1: callback.saveScale(); break;
+            case 0: callback.addScale(); break; 
+            case 1: callback.clearScale(); break; 
             case 2: break;
             case 3: break;
             case 4: 
@@ -218,8 +348,8 @@ class ImgPageBottomBar {
                   annoProp.save();
               }
               break;
-            case 5: callback.beforepage(); break;
-            case 6: callback.nextpage(); break;
+            case 5: await callback.before_area(); break;
+            case 6: await callback.next_area(); break;
           }
         },
         type: BottomNavigationBarType.fixed,
