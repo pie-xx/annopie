@@ -52,7 +52,6 @@ class ImagePageState extends State<ImagePage> {
   @override
   void initState() {
     curfile = widget.path??"";
-
     viewstat = ViewStat(curfile);
     areas = viewstat.getLastArea();
     aindex=0;
@@ -63,7 +62,6 @@ class ImagePageState extends State<ImagePage> {
     }else{
       _transformationController.value = Matrix4.identity();
     }
-    print(_transformationController.value);
 
 
     loadImage(curfile);
@@ -100,10 +98,7 @@ class ImagePageState extends State<ImagePage> {
     showBar();
     await loadImage(curfile);
     setState(() {
-      
     });
-
-
   }
 
   @override
@@ -113,21 +108,39 @@ class ImagePageState extends State<ImagePage> {
     super.dispose();
   }
 
-  void kurukuru(){
-            showGeneralDialog(
-              context: context,
-              barrierDismissible: false,
-              transitionDuration: Duration(milliseconds: 250), // ダイアログフェードインmsec
-              barrierColor: Colors.black.withOpacity(0.5), // 画面マスクの透明度
-              pageBuilder: (BuildContext context, Animation animation,
-                  Animation secondaryAnimation) {
-                return Center(
-                  child: CircularProgressIndicator(),
-                );
-              });
+  List<Widget> mkDrawer(){
+
+    List<Widget> dis=[];
+    AnnotationProp annoProp = AnnotationProp(curfile);
+    for( FileSystemEntity p in folderprop.plist ){
+      if( annoProp.readAnnotation(p.path)!="" ){
+          dis.add( mkditem( p, annoProp.readAnnotation(p.path) ) );
+      }
+    }
+    return dis;
   }
-  void kurukuruOff(){
-    Navigator.pop(context);
+
+    // Drawer用 
+  ListTile mkditem( FileSystemEntity p, String title ){
+
+    return ListTile(
+        //leading: leading,
+        title: Text( title ),
+        //subtitle: Text( getbasename(p.path) ),
+        onTap: () async {
+
+          Navigator.pop(context);
+          
+          await loadImage(p.path);
+
+          setState(() {
+            viewstat.set_last_ainx(aindex);
+            viewstat.setLastPath(p.path);
+            viewstat.save();
+          });
+        },
+        dense: false,
+      );
   }
 
   Future<void>  loadImage(String path) async {
@@ -148,11 +161,28 @@ class ImagePageState extends State<ImagePage> {
       visible: _visible,
       child: ImgPageBottomBar.build(context, this),
     );
-    String appbartitle = "${folderprop.index(curfile)}: ${folderprop.dirName()}";
+
+    IconButton cdbtn =
+          IconButton(
+            icon: const Icon(Icons.edit_location, color: Colors.white,),
+            tooltip: 'edit area',
+            onPressed: () async {
+              /*
+              await Navigator.push(
+                  this.context,
+                  MaterialPageRoute(
+                    builder: (context) => EditAreaPage(path: curfile) 
+                  )
+                );
+              */
+            },
+          );
+
+    String appbartitle = "${folderprop.index(curfile)}/${folderprop.length()}: ${folderprop.dirName()}";
     if( areas.length > 0 ){
-      appbartitle = "${folderprop.index(curfile)}(${aindex+1}/${areas.length}): ${folderprop.dirName()}";
+      appbartitle = "${folderprop.index(curfile)}/${folderprop.length()}(${aindex+1}/${areas.length}): ${folderprop.dirName()}";
     }
-    Text appbarText = Text(appbartitle);
+    Text appbarText = Text(appbartitle, overflow: TextOverflow.fade,);
 
     var iviewer = InteractiveViewer(
             transformationController: _transformationController,
@@ -163,21 +193,22 @@ class ImagePageState extends State<ImagePage> {
             boundaryMargin: const EdgeInsets.all(20.0),
             minScale: 0.1,
             maxScale: 64,
-            child: 
-                Center( child: img, ),
+            child: Center( child: img, ),
           );
+    
+    List<Widget> dis = mkDrawer();
 
-    var scaffold = Scaffold(
+      return Scaffold(
         appBar: PreferredSize(
           preferredSize: Size.fromHeight(32.0),
-          child: AppBar(title: appbarText,)
-        ),  
-        body: iviewer,
+          child: AppBar(title: appbarText, actions:[cdbtn,], )
+        ),       
+        drawer: Drawer(child: ListView(children: dis,),),         
+        body: 
+          iviewer,
         bottomNavigationBar:
           toolbar
       );
-
-    return  scaffold;
   }
 
   void showBar() {
@@ -198,59 +229,16 @@ class ImagePageState extends State<ImagePage> {
     });
   }
 
-  addScale(){
-    setState(() {
-      areas.add(_transformationController.value);
-      aindex = areas.length - 1;
-      viewstat.setLastArea(areas);
-      viewstat.save();
-    });
-  }
-
-  clearScale(){
-    setState(() {
-      areas.clear();
-      aindex = 0;
-      viewstat.setLastArea(areas);
-      viewstat.save();
-    });
-  }
-
-  before_area(){
-    --aindex;
-    if( aindex < 0 ){
-      aindex = areas.length - 1;
-      beforepage();
-    }
-    if( areas.length > 0 ){
-      setState(() {
-        _transformationController.value = areas[aindex];
-      });
-    }
-  }
-  next_area(){
-    ++aindex;
-    if( aindex >= areas.length ){
-      aindex = 0;
-      nextpage();
-    }
-    if( areas.length > 0 ){
-      setState(() {
-        _transformationController.value = areas[aindex];
-      });
-    }
-  }
-
-
-nextpage(){
+  Future<void> nextpage() async {
     try {
       var folderprop = FolderProp(curfile);
       bool find = false;
       for( var p in folderprop.plist ){
         if( find ){
-          setState(() {
-            loadImage(p.path);
+          await loadImage(p.path);
 
+          setState(() {
+            viewstat.set_last_ainx(aindex);
             viewstat.setLastPath(p.path);
             viewstat.save();
           });
@@ -264,15 +252,16 @@ nextpage(){
     }
   }
 
-  beforepage(){
+  Future<void> beforepage() async {
     try {
 
       String beforefile = folderprop.plist[0].path;
       for( var p in folderprop.plist ){
         if( p.path == curfile ){
+          await loadImage(beforefile);
+
           setState(() {
-            loadImage(beforefile);
-          
+            viewstat.set_last_ainx(aindex);
             viewstat.setLastPath(beforefile);
             viewstat.save();
           });
@@ -284,15 +273,72 @@ nextpage(){
     }
   }
 
-  resetScale(){
+  void resetScale(){
     _transformationController.value = Matrix4.identity();
   }
 
-  saveScale(){
+  void saveScale(){
     scalevalue = _transformationController.value;
   }
-  loadScale(){
+  void loadScale(){
     _transformationController.value = scalevalue;
+  }
+
+  void addScale(){
+    setState(() {
+      areas.add(_transformationController.value);
+      aindex = areas.length - 1;
+      viewstat.setLastArea(areas);
+      viewstat.save();
+    });
+  }
+
+  void clearScale(){
+    setState(() {
+      areas.clear();
+      aindex = 0;
+      viewstat.setLastArea(areas);
+      viewstat.save();
+    });
+  }
+
+  Future<void> before_area() async {
+    --aindex;
+    if( aindex < 0 ){
+      aindex = areas.length - 1;
+      await beforepage();
+    }
+    if( areas.length > 0 ){
+      setState(() {
+        _transformationController.value = areas[aindex];
+        viewstat.set_last_ainx(aindex);
+        viewstat.save();
+      });
+    }
+  }
+  Future<void> next_area() async {
+    ++aindex;
+    if( aindex >= areas.length ){
+      aindex = 0;
+      await nextpage();
+    }
+    if( areas.length > 0 ){
+      setState(() {
+        _transformationController.value = areas[aindex];
+        viewstat.set_last_ainx(aindex);
+        viewstat.save();
+      });
+    }
+  }
+
+  Future<void> input_page( int pno ) async {
+    String gopath = folderprop.plist[pno].path;
+    await loadImage(gopath);
+    setState(() {
+      viewstat.set_last_ainx(0);
+      viewstat.setLastPath(gopath);
+      viewstat.save();
+    });
   }
 }
 
@@ -300,6 +346,7 @@ nextpage(){
 class ImgPageBottomBar {
 
   static BottomNavigationBar build( BuildContext context, ImagePageState callback ){
+
     return 
       BottomNavigationBar( 
         items: [
@@ -325,6 +372,11 @@ class ImgPageBottomBar {
             label: "annotation",
           ),
           BottomNavigationBarItem(
+            backgroundColor: Colors.grey.shade400,
+            icon: Icon(Icons.pages),
+            label: "page",
+          ),
+          BottomNavigationBarItem(
             icon: Icon(Icons.navigate_before),
             label: "before",
           ),
@@ -346,10 +398,19 @@ class ImgPageBottomBar {
               if( res != null ){   
                   annoProp.writeAnnotation(fname, res);
                   annoProp.save();
+                  await Future.delayed(Duration(seconds: 1));
+                  callback.setState(() {
+                  });
               }
               break;
-            case 5: await callback.before_area(); break;
-            case 6: await callback.next_area(); break;
+            case 5: 
+              var res = await inputDialog(context, 'page', "" );
+              if( res != null ){
+                await callback.input_page(int.parse(res)); 
+              }
+              break;
+            case 6: await callback.before_area(); break;
+            case 7: await callback.next_area(); break;
           }
         },
         type: BottomNavigationBarType.fixed,
