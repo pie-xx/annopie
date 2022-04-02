@@ -37,6 +37,9 @@ class FolderProp {
     }
     return -1;
   }
+  int length(){
+    return plist.length;
+  }
 
   String parentpath(){
     return pDir.parent.path;
@@ -53,12 +56,14 @@ class ViewStat {
   String _lastfile="";
   String _lastdir="";
   String _lastcont="";
+  int _lastainx=0;
   List<Matrix4> _lastarea = [];
 
   final String statfile = "/.annofilers.json";
-  final String KEYfile = "lastfile";
-  final String KEYcont = "lastcont";
-  final String KEYarea = "lastarea";
+  final String KEYfile = "lastfile"; // 最終ファイル
+  final String KEYcont = "lastcont"; // 最終コントラスト
+  final String KEYarea = "lastarea"; // 最終エリア設定
+  final String KEYainx = "lastainx"; // 最終エリアインデックス
 
   ViewStat(String _ldir){    
     File f = File(_ldir);
@@ -110,6 +115,14 @@ class ViewStat {
     //String areas = _lastarea.toString();
     return _lastarea;
   }
+
+  void set_last_ainx(int ainx) {
+    _lastainx = ainx;
+  }
+  int get_last_ainx(){
+    return _lastainx;
+  }
+
   void loadarea(String areastring){
     _lastarea.clear();
     List lines = areastring.split("\n");
@@ -151,6 +164,7 @@ class ViewStat {
       _lastpath = _lastdir + "/" + _lastfile;
       _lastcont = response[KEYcont];
       loadarea(response[KEYarea]);
+      _lastainx = response[KEYainx];
     }catch(e){
       print(e);
       SharedPreferences pref = await SharedPreferences.getInstance();
@@ -158,6 +172,7 @@ class ViewStat {
       _lastfile = getbasename(_lastpath);
       _lastcont = await pref.getString(KEYcont) ?? "";
       loadarea(await pref.getString(KEYarea) ?? "");
+      _lastainx = await pref.getInt(KEYainx) ?? 0;
     }
   }
 
@@ -166,6 +181,7 @@ class ViewStat {
     answer[KEYfile] = getLastFilteTitle();
     answer[KEYcont] = _lastcont;
     answer[KEYarea] = _lastarea.toString();
+    answer[KEYainx] = _lastainx;
     final json = jsonEncode(answer);
     String jsonstr = json.toString();
 
