@@ -22,6 +22,7 @@ class FileListPage extends StatefulWidget {
 class FileListPageState extends State<FileListPage> {
   String lastdir = "";
   String selectedfile = "";
+  String filterword="";
 
   bool mkListDone = false;
 
@@ -62,7 +63,7 @@ class FileListPageState extends State<FileListPage> {
 
   }
 
-  Future<void> makeFolderList() async {
+  Future<void> makeFolderList( String fw ) async {
     folderProp = FolderProp(lastdir);
 
     ListTile parentEntry =
@@ -91,9 +92,11 @@ class FileListPageState extends State<FileListPage> {
     dis = [ parentEntryD ];
 
     for( FileSystemEntity p in folderProp.plist ){
-      fis.add( mkfitem( p ) );
-      if( annoProp.readAnnotation(p.path)!="" ){
-        dis.add( mkditem( p ) );
+      if( p.path.indexOf(fw)!=-1 ){
+        fis.add( mkfitem( p ) );
+        if( annoProp.readAnnotation(p.path)!="" ){
+          dis.add( mkditem( p ) );
+        }
       }
     }
     mkListDone=true;
@@ -114,7 +117,7 @@ class FileListPageState extends State<FileListPage> {
 
   @override
   Widget build(BuildContext context) {
-    makeFolderList();
+    makeFolderList( filterword );
   
     IconButton cdbtn =
               IconButton(
@@ -150,6 +153,22 @@ class FileListPageState extends State<FileListPage> {
           ListView( children: fis, controller: _scrollController,),
  
       persistentFooterButtons:<Widget> [
+        Column(
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: [
+            IconButton(
+              onPressed: () async {
+                var res = await inputDialog(context, 'search', filterword );
+                if( res != null ){
+                  setState(() {
+                    filterword = res;
+                  });
+                }
+              },
+              icon: Icon(Icons.search)),
+            Text("search") 
+          ]
+        ),
         Column(
           mainAxisAlignment: MainAxisAlignment.start,
           children: [
@@ -230,7 +249,7 @@ class FileListPageState extends State<FileListPage> {
   ListTile mkfitem( FileSystemEntity p ){
     String subtitlestr = sprintf("%8d", [p.statSync().size]);
     CType ct = check(p);
-
+    final _focusNode = FocusNode(); 
     switch( ct ){ 
     case CType.Folder:
       subtitlestr = "";
@@ -263,6 +282,7 @@ class FileListPageState extends State<FileListPage> {
             selected: selectedfile==ViewStat.getbasename(p.path),
             onLongPress: (){ editAnnotation(p.path); },
             onTap: () async {
+              FocusScope.of(context).requestFocus(_focusNode);
               await Navigator.push(
                   this.context,
                   MaterialPageRoute(
@@ -354,16 +374,18 @@ class FileListPageState extends State<FileListPage> {
       case FileSystemEntityType.directory:
         return CType.Folder;
       case FileSystemEntityType.file:
-        if( p.path.endsWith(".mp3") || p.path.endsWith(".wav") || p.path.endsWith(".amr") || p.path.endsWith(".m4a") || p.path.endsWith(".ogg") ){
+        if( p.path.toLowerCase().endsWith(".mp3") || p.path.toLowerCase().endsWith(".wav") || p.path.toLowerCase().endsWith(".amr") 
+        || p.path.toLowerCase().endsWith(".m4a") || p.path.toLowerCase().endsWith(".ogg") ){
           return CType.Sound;
         }else
-        if(p.path.endsWith(".jpg")|| p.path.endsWith(".JPG")|| p.path.endsWith(".png") || p.path.endsWith(".gif")|| p.path.endsWith(".bmp") ){
+        if(p.path.toLowerCase().endsWith(".jpg")||p.path.toLowerCase().endsWith(".jpeg")|| p.path.toLowerCase().endsWith(".png") 
+        || p.path.toLowerCase().endsWith(".gif")|| p.path.toLowerCase().endsWith(".bmp") ){
           return CType.Image;
         }else
-        if( p.path.endsWith(".json")|| p.path.endsWith(".txt") || p.path.endsWith(".xml") ){
+        if( p.path.toLowerCase().endsWith(".json")|| p.path.toLowerCase().endsWith(".txt") || p.path.toLowerCase().endsWith(".xml") ){
           return CType.Text;
         }else
-        if( p.path.endsWith(".mp4")|| p.path.endsWith(".mpg") ){
+        if( p.path.toLowerCase().endsWith(".mp4")|| p.path.toLowerCase().endsWith(".mpg") ){
           return CType.Movie;
         }
         break;
