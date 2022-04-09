@@ -185,8 +185,15 @@ class ViewStat {
     final json = jsonEncode(answer);
     String jsonstr = json.toString();
 
+    SharedPreferences pref = await SharedPreferences.getInstance();
+    await pref.setString(KEYfile, answer[KEYfile] );
+    await pref.setString(KEYcont, answer[KEYcont] );
+    await pref.setString(KEYarea, answer[KEYarea] );
+    await pref.setInt(KEYainx, answer[KEYainx] );
+
     try{
       await File(_lastdir+statfile).writeAsString(jsonstr);
+      await Future.delayed(Duration(seconds: 1));
     }catch(e){
       print(e);
     }
