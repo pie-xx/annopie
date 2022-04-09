@@ -83,8 +83,8 @@ class FileListPageState extends State<FileListPage> {
             title: Text(".."),
             subtitle: Text( folderProp.parentpath() ),
             onTap: () {
-              itemOnTap();
               Navigator.pop(this.context);
+              itemOnTap();
             },
             dense: false,
             );
