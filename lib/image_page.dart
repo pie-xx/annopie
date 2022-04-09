@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/src/services/hardware_keyboard.dart';
+import 'package:flutter/src/services/keyboard_key.dart';
 
 import 'folder_prop.dart';
 import 'input_dialog.dart';
@@ -63,7 +64,6 @@ class ImagePageState extends State<ImagePage> {
       _transformationController.value = Matrix4.identity();
     }
 
-
     loadImage(curfile);
     folderprop = FolderProp(curfile);
     super.initState();
@@ -73,27 +73,12 @@ class ImagePageState extends State<ImagePage> {
   void didChangeDependencies() async {
     super.didChangeDependencies();
 
-    keyboard.addHandler((event) { 
-      if( event is KeyDownEvent ){
-        switch( event.physicalKey.usbHidUsage ){
-          case KEY_Vdown:
-          case WKEY_ArrowDown:
-            next_area();
-            break;
-          case KEY_Vup:
-          case WKEY_ArrowUp:
-            before_area();
-            break;
-          case KEY_Back:
-          case KEY_BackGes:
-          case WKEY_Backspace:
-          case WKEY_Escape:
-            Navigator.pop(context);
-            break;
-        }
-      }
-      return true;
-    });
+    KeyHandler.set_handler({
+        PhysicalKeyboardKey.audioVolumeUp.usbHidUsage:before_area, 
+        PhysicalKeyboardKey.arrowUp.usbHidUsage:before_area, 
+        PhysicalKeyboardKey.audioVolumeDown.usbHidUsage:next_area,
+        PhysicalKeyboardKey.arrowDown.usbHidUsage:next_area,
+        });
 
     showBar();
     await loadImage(curfile);
@@ -105,12 +90,18 @@ class ImagePageState extends State<ImagePage> {
   void dispose() {
     print('ImagePageState dispose');
 
+    KeyHandler.reset_handler();
     super.dispose();
   }
 
   List<Widget> mkDrawer(){
-
-    List<Widget> dis=[];
+    List<Widget> dis=[ 
+      DrawerHeader(
+      child: Text(folderprop.dirName()),
+      decoration: BoxDecoration(
+        color: Colors.blue,
+      ),
+    ),];
     AnnotationProp annoProp = AnnotationProp(curfile);
     for( FileSystemEntity p in folderprop.plist ){
       if( annoProp.readAnnotation(p.path)!="" ){
@@ -152,7 +143,6 @@ class ImagePageState extends State<ImagePage> {
     viewstat = ViewStat(curfile);
     viewstat.setLastPath(curfile);
     viewstat.save();
-    loaddone = true;
   }
 
   @override
@@ -164,17 +154,10 @@ class ImagePageState extends State<ImagePage> {
 
     IconButton cdbtn =
           IconButton(
-            icon: const Icon(Icons.edit_location, color: Colors.white,),
-            tooltip: 'edit area',
+            icon: const Icon(Icons.arrow_back, color: Colors.white,),
+            tooltip: 'back',
             onPressed: () async {
-              /*
-              await Navigator.push(
-                  this.context,
-                  MaterialPageRoute(
-                    builder: (context) => EditAreaPage(path: curfile) 
-                  )
-                );
-              */
+              Navigator.pop(context);
             },
           );
 
@@ -344,12 +327,7 @@ class ImagePageState extends State<ImagePage> {
 
 
 class ImgPageBottomBar {
-
-  static BottomNavigationBar build( BuildContext context, ImagePageState callback ){
-
-    return 
-      BottomNavigationBar( 
-        items: [
+  static final List<BottomNavigationBarItem> items = [
           BottomNavigationBarItem(
             icon: Icon(Icons.add_to_queue),
             label: "add",
@@ -359,11 +337,7 @@ class ImgPageBottomBar {
             label: "clear",
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.no_encryption),
-            label: "",
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.no_encryption),
+            icon: Icon(null),
             label: "",
           ),
           BottomNavigationBarItem(
@@ -384,14 +358,19 @@ class ImgPageBottomBar {
             icon: Icon(Icons.navigate_next),
             label: "next",
           ),
-        ],
+  ];
+
+  static BottomNavigationBar build( BuildContext context, ImagePageState callback ){
+
+    return 
+      BottomNavigationBar( 
+        items: items,
         onTap:(index) async {  
-          switch(index) {
-            case 0: callback.addScale(); break; 
-            case 1: callback.clearScale(); break; 
-            case 2: break;
-            case 3: break;
-            case 4: 
+          String label = items[index].label.toString();
+          switch(label) {
+            case "add": callback.addScale(); break; 
+            case "clear": callback.clearScale(); break; 
+            case "annotation": 
               String fname = callback.curfile;
               var annoProp = AnnotationProp(fname);
               var res = await inputDialog(context, 'Annotation', annoProp.readAnnotation(fname));
@@ -403,14 +382,14 @@ class ImgPageBottomBar {
                   });
               }
               break;
-            case 5: 
+            case "page": 
               var res = await inputDialog(context, 'page', "" );
               if( res != null ){
                 await callback.input_page(int.parse(res)); 
               }
               break;
-            case 6: await callback.before_area(); break;
-            case 7: await callback.next_area(); break;
+            case "before": await callback.before_area(); break;
+            case "next": await callback.next_area(); break;
           }
         },
         type: BottomNavigationBarType.fixed,
