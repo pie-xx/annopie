@@ -4,11 +4,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'flist_page.dart';
+import 'folder_prop.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   String lastdir = await getDefaultDir();
+  FolderInfo.init(lastdir);
 
   runApp(MyApp(path: lastdir));
 }

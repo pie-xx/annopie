@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sprintf/sprintf.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:file_picker/file_picker.dart';
@@ -20,16 +19,12 @@ class FileListPage extends StatefulWidget {
 }
 
 class FileListPageState extends State<FileListPage> {
-  String lastdir = "";
   String selectedfile = "";
   String filterword="";
 
   bool mkListDone = false;
 
   late ScrollController _scrollController;
-  late FolderProp folderProp;
-  late ViewStat viewstat;
-  AnnotationProp annoProp = AnnotationProp("");
 
   late List<Widget> fis ;
   late List<Widget> dis ;
@@ -51,26 +46,17 @@ class FileListPageState extends State<FileListPage> {
       }
     }
 
-    lastdir = widget.targetdir??"";
-
-    viewstat = ViewStat(lastdir);
-    selectedfile = viewstat.getLastFilteTitle();
-    annoProp = AnnotationProp(lastdir);
-
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.setString('lastdir', lastdir);
+    selectedfile = FolderInfo.get_last_file_title();
     setState(() {});
-
   }
 
   Future<void> makeFolderList( String fw ) async {
-    folderProp = FolderProp(lastdir);
 
     ListTile parentEntry =
       ListTile(
             leading: const Icon(Icons.folder),
             title: Text(".."),
-            subtitle: Text( folderProp.parentpath() ),
+            subtitle: Text( FolderInfo.parentpath() ),
             onTap: (){ itemOnTap();},
             dense: false,
             );
@@ -81,7 +67,7 @@ class FileListPageState extends State<FileListPage> {
       ListTile(
             leading: const Icon(Icons.folder),
             title: Text(".."),
-            subtitle: Text( folderProp.parentpath() ),
+            subtitle: Text( FolderInfo.parentpath() ),
             onTap: () {
               Navigator.pop(this.context);
               itemOnTap();
@@ -91,10 +77,10 @@ class FileListPageState extends State<FileListPage> {
 
     dis = [ parentEntryD ];
 
-    for( FileSystemEntity p in folderProp.plist ){
+    for( FileSystemEntity p in FolderInfo.get_file_list() ){
       if( p.path.indexOf(fw)!=-1 ){
         fis.add( mkfitem( p ) );
-        if( annoProp.readAnnotation(p.path)!="" ){
+        if( FolderInfo.read_annotation(p.path)!="" ){
           dis.add( mkditem( p ) );
         }
       }
@@ -103,13 +89,14 @@ class FileListPageState extends State<FileListPage> {
   }
 
   void itemOnTap(){
-    if( folderProp.parentpath()==widget.olddir){
+    if( FolderInfo.parentpath()==widget.olddir){
       Navigator.pop(this.context);
-    }else{                
+    }else{
+      FolderInfo.load(FolderInfo.parentpath());  
       Navigator.push(
         this.context, 
         MaterialPageRoute(
-          builder: (context) => FileListPage( targetdir: folderProp.parentpath(), olddir: lastdir, )
+          builder: (context) => FileListPage( targetdir: FolderInfo.parentpath(), olddir: widget.targetdir, )
         )
       );
     }
@@ -127,26 +114,28 @@ class FileListPageState extends State<FileListPage> {
                   //var res = await inputDialog(context, 'Folder', lastdir);
                   var res = await FilePicker.platform.getDirectoryPath();
                   print(sprintf("response of InputDialog = %s",[res]));
-                  if( res != null ){                                      
+                  if( res != null ){
+                    FolderInfo.load(res);
                     Navigator.push(
                       this.context, 
                       MaterialPageRoute(
-                        builder: (context) => FileListPage( targetdir: res, olddir: lastdir, )
+                        builder: (context) => FileListPage( targetdir: res, olddir: widget.targetdir, )
                       )
                     );
                   }
                 },
               );
+    String targetdir = widget.targetdir??"";
 
-    if( lastdir=="" || mkListDone==false ){
-      return Scaffold(appBar: AppBar(title: Text("Loading... ["+lastdir+"]"),actions:[cdbtn]),);
+    if( targetdir=="" || mkListDone==false ){
+      return Scaffold(appBar: AppBar(title: Text("Loading... ["+targetdir+"]"),actions:[cdbtn]),);
     }
-    if(lastdir.endsWith("/")){
-      lastdir = lastdir.substring(0,lastdir.length-1);
+    if(targetdir.endsWith("/")){
+      targetdir = targetdir.substring(0, targetdir.length-1);
     }
 
     return Scaffold(
-      appBar: AppBar(title: Text(ViewStat.getbasename(lastdir) ), 
+      appBar: AppBar(title: Text(ViewStat.getbasename(targetdir) ), 
                 actions:[cdbtn,]),
       drawer: Drawer(child: ListView(children: dis,),),
       body:  
@@ -176,11 +165,7 @@ class FileListPageState extends State<FileListPage> {
               onPressed: () async {
                 var res = await inputDialog(context, 'page', "");
                 if( res != null ){
-                  if( res.endsWith('%')){
-                    scrolltoPercent(res);
-                  }else{
-                    scroll2page(res);
-                  }
+                  scroll2page(res);
                 }
               },
               icon: Icon(Icons.pages_sharp)),
@@ -226,9 +211,11 @@ class FileListPageState extends State<FileListPage> {
   }
 
   scrollList(String fname){
-    int cindex = folderProp.index(fname);
+    int cindex = FolderInfo.index(fname);
     if( cindex != -1 ){
-      _scrollController.jumpTo(_scrollController.position.maxScrollExtent * cindex / folderProp.plist.length );
+      setState(() {
+        _scrollController.jumpTo(_scrollController.position.maxScrollExtent * cindex / FolderInfo.get_file_list().length );
+      });
     }
   }
   scroll2page(String res){
@@ -238,15 +225,17 @@ class FileListPageState extends State<FileListPage> {
     }else{
       count = double.parse(res);
     }
-    _scrollController.jumpTo(_scrollController.position.maxScrollExtent * count / folderProp.plist.length );
-  }
-  scrolltoPercent(String res){
-    double percent = double.parse(res.split("%")[0])/100;
-    _scrollController.jumpTo(_scrollController.position.maxScrollExtent * percent );
+    if( count < FolderInfo.length() && count > 0 ){
+      setState(() {
+      selectedfile = ViewStat.getbasename(FolderInfo.get_file_list()[count.toInt()].path) ;
+      _scrollController.jumpTo(_scrollController.position.maxScrollExtent * count / FolderInfo.get_file_list().length );
+      });
+    }
   }
 
   // Body用
   ListTile mkfitem( FileSystemEntity p ){
+    String targetdir = widget.targetdir??"";
     String subtitlestr = sprintf("%8d", [p.statSync().size]);
     CType ct = check(p);
     final _focusNode = FocusNode(); 
@@ -256,15 +245,16 @@ class FileListPageState extends State<FileListPage> {
 
       return ListTile(
         leading:  Icon(Icons.folder),
-        title:    Text(p.path.substring(lastdir.length+1)),
+        title:    Text(p.path.substring(targetdir.length+1)),
         subtitle: Text(subtitlestr),
         selected: selectedfile==ViewStat.getbasename(p.path),
         onLongPress: (){ editAnnotation(p.path); },
         onTap: () async {
+          FolderInfo.load(p.path);
           Navigator.push(
             this.context, 
             MaterialPageRoute(
-              builder: (context) => FileListPage( targetdir: p.path, olddir: lastdir,)
+              builder: (context) => FileListPage( targetdir: p.path, olddir: targetdir,)
             )
           );
           setState(() {
@@ -277,8 +267,8 @@ class FileListPageState extends State<FileListPage> {
             leading:  Image.file(File(p.path), cacheWidth: 80, errorBuilder: (BuildContext context, Object exception, StackTrace? stackTrace) {
                 return const Text('😢');
               },),
-            title: Text(p.path.substring(lastdir.length+1)),
-            subtitle: Text( annoProp.readAnnotation(p.path) +" "+ subtitlestr ),
+            title: Text(p.path.substring(targetdir.length+1)),
+            subtitle: Text( FolderInfo.read_annotation(p.path) +" "+ subtitlestr ),
             selected: selectedfile==ViewStat.getbasename(p.path),
             onLongPress: (){ editAnnotation(p.path); },
             onTap: () async {
@@ -291,9 +281,9 @@ class FileListPageState extends State<FileListPage> {
                 );
                 
               setState(() {
-                viewstat.reload();
-                this.selectedfile = viewstat.getLastFilteTitle();
-                annoProp.reload();
+                //viewstat.reload();
+                this.selectedfile = FolderInfo.get_last_file_title();
+                //annoProp.reload();
                 scrollList(selectedfile);
               });
             },
@@ -302,7 +292,7 @@ class FileListPageState extends State<FileListPage> {
     default:
       return ListTile(
             leading:  Icon(Icons.text_snippet_outlined),
-            title: Text(p.path.substring(lastdir.length+1)),
+            title: Text(p.path.substring(targetdir.length+1)),
             subtitle: Text( subtitlestr ),
             selected: selectedfile==ViewStat.getbasename(p.path),
             onLongPress: (){ editAnnotation(p.path); },
@@ -318,28 +308,27 @@ class FileListPageState extends State<FileListPage> {
 
   // Drawer用 
   ListTile mkditem( p ){
+    String targetdir = widget.targetdir??"";
     CType ct = check(p);
     return ListTile(
         //leading: leading,
-        title: Text( annoProp.readAnnotation(p.path) ),
+        title: Text( FolderInfo.read_annotation(p.path) ),
         //subtitle: Text( getbasename(p.path) ),
         onTap: () async {
           switch(ct){
           case CType.Folder:
+            FolderInfo.load(p.path);
             Navigator.push(
               this.context, 
               MaterialPageRoute(
-                builder: (context) => FileListPage( targetdir: p.path, olddir: lastdir,)
+                builder: (context) => FileListPage( targetdir: p.path, olddir: targetdir,)
               )
             );
             break;
           default:
             Navigator.pop(context);
             setState(() {
-              viewstat.reload();
-              annoProp.reload();
               selectedfile = ViewStat.getbasename(p.path);
-
               scrollList(selectedfile);
             });            
           }
@@ -349,11 +338,10 @@ class FileListPageState extends State<FileListPage> {
   }
 
   editAnnotation(String fname) async {
-        var res = await inputDialog(context, 'Annotation', annoProp.readAnnotation(fname));
+        var res = await inputDialog(context, 'Annotation', FolderInfo.read_annotation(fname));
         if( res != null ){   
           setState(() {                                   
-            annoProp.writeAnnotation(fname, res);
-            annoProp.save();
+            FolderInfo.write_annotation(fname, res);
           });
         }
   }

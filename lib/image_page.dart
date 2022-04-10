@@ -33,7 +33,6 @@ class ImagePageState extends State<ImagePage> {
   List<Matrix4> areas = [];
   int aindex = 0;
 
-  late FolderProp folderprop;
   late AppBar appbar;
 
   bool loaddone = false;
@@ -65,7 +64,7 @@ class ImagePageState extends State<ImagePage> {
     }
 
     loadImage(curfile);
-    folderprop = FolderProp(curfile);
+
     super.initState();
   }
 
@@ -97,15 +96,15 @@ class ImagePageState extends State<ImagePage> {
   List<Widget> mkDrawer(){
     List<Widget> dis=[ 
       DrawerHeader(
-      child: Text(folderprop.dirName()),
+      child: Text(FolderInfo.dirName()),
       decoration: BoxDecoration(
         color: Colors.blue,
       ),
     ),];
-    AnnotationProp annoProp = AnnotationProp(curfile);
-    for( FileSystemEntity p in folderprop.plist ){
-      if( annoProp.readAnnotation(p.path)!="" ){
-          dis.add( mkditem( p, annoProp.readAnnotation(p.path) ) );
+
+    for( FileSystemEntity p in FolderInfo.get_file_list() ){
+      if( FolderInfo.read_annotation(p.path)!="" ){
+          dis.add( mkditem( p, FolderInfo.read_annotation(p.path) ) );
       }
     }
     return dis;
@@ -161,9 +160,9 @@ class ImagePageState extends State<ImagePage> {
             },
           );
 
-    String appbartitle = "${folderprop.index(curfile)}/${folderprop.length()}: ${folderprop.dirName()}";
+    String appbartitle = "${FolderInfo.index(curfile)}/${FolderInfo.length()}: ${FolderInfo.dirName()}";
     if( areas.length > 0 ){
-      appbartitle = "${folderprop.index(curfile)}/${folderprop.length()}(${aindex+1}/${areas.length}): ${folderprop.dirName()}";
+      appbartitle = "${FolderInfo.index(curfile)}/${FolderInfo.length()}(${aindex+1}/${areas.length}): ${FolderInfo.dirName()}";
     }
     Text appbarText = Text(appbartitle, overflow: TextOverflow.fade,);
 
@@ -214,9 +213,8 @@ class ImagePageState extends State<ImagePage> {
 
   Future<void> nextpage() async {
     try {
-      var folderprop = FolderProp(curfile);
       bool find = false;
-      for( var p in folderprop.plist ){
+      for( var p in FolderInfo.get_file_list() ){
         if( find ){
           await loadImage(p.path);
 
@@ -238,8 +236,8 @@ class ImagePageState extends State<ImagePage> {
   Future<void> beforepage() async {
     try {
 
-      String beforefile = folderprop.plist[0].path;
-      for( var p in folderprop.plist ){
+      String beforefile = FolderInfo.get_file_list()[0].path;
+      for( var p in FolderInfo.get_file_list() ){
         if( p.path == curfile ){
           await loadImage(beforefile);
 
@@ -315,7 +313,7 @@ class ImagePageState extends State<ImagePage> {
   }
 
   Future<void> input_page( int pno ) async {
-    String gopath = folderprop.plist[pno].path;
+    String gopath = FolderInfo.get_file_list()[pno].path;
     await loadImage(gopath);
     setState(() {
       viewstat.set_last_ainx(0);

@@ -4,51 +4,106 @@ import 'dart:convert';
 import 'package:flutter/cupertino.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class FolderProp {
-  late String lastdir;
-  late List plist;
-  late Directory pDir;
+class FolderInfo {
+  static String lastdir="";
+  static Directory? dir;
+  static List<FileSystemEntity> plist=[];
 
-  FolderProp(String _lastdir){
+  static ViewStat? viewstat;
+  static AnnotationProp? annoprop;
+
+  static SharedPreferences? pref;
+  final String statfile = "/.annofilers.json";
+  static final String SFdir = "lastdir"; // 最終ディレクトリ
+
+  static Future<void> init(String dir) async {
+    pref = await SharedPreferences.getInstance();
+    set_last_dir(dir);
+    load(dir);
+  }
+
+  static void set_last_dir(String _lastdir){
+    pref?.setString(SFdir, _lastdir);
+  }
+  static String get_last_dir(){
+    return pref?.getString(SFdir) ?? "";
+  }
+
+  static void load(String _lastdir){
     File f = File(_lastdir);
     if( f.statSync().type != FileSystemEntityType.directory ){
       _lastdir = f.parent.path;
     }
+
     lastdir=_lastdir;
-    pDir = Directory(lastdir);
-    plist=[];
-    reload();
-  }
-  
-  reload(){
+    dir = Directory(lastdir);
+    
     try{
-      plist = Directory(lastdir).listSync();
+      plist = dir?.listSync() ?? [];
       plist.sort((a,b) => a.path.compareTo(b.path));
     }catch(e){
       print(e);
     }
+
+    viewstat = ViewStat(lastdir);
+    annoprop = AnnotationProp(lastdir);
   }
 
-  int index(String path){
-    for( int n = 0; n < plist.length; ++n ){
-      if( plist[n].path.toString().endsWith(path) ){
-        return n;
+  static int index(String path){
+    for( int inx=0; inx < length(); ++inx){
+      if( plist[inx].path.endsWith(path) ){
+        return inx;
       }
     }
     return -1;
   }
-  int length(){
-    return plist.length;
+  static int length(){
+    return (plist.length) ;
   }
 
-  String parentpath(){
-    return pDir.parent.path;
+  static String parentpath(){
+    return ((dir?.parent)?.path) ?? "";
   }
 
-  String dirName(){
-    List flist = pDir.path.split("/");
+  static String dirName(){
+    List flist = ((dir?.path)??"").split("/");
     return flist.last;
   }
+
+  static List<FileSystemEntity> get_file_list(){
+    return plist;
+  }
+///////////////////////////////////////////////
+
+  static String read_annotation(String fname){
+    return (annoprop?.readAnnotation(fname))?? "";
+  }
+
+  static write_annotation(String fname, String annotation){
+    annoprop?.writeAnnotation(fname, annotation);
+    annoprop?.save();
+    annoprop?.reload();
+  }
+///////////////////////////////////////////////
+
+  static void set_last_path(String path){
+    viewstat?.setLastPath(path);
+  }
+  static String get_last_path(){
+    return (viewstat?.getLastFileFullpath()) ?? "";
+  }
+
+
+
+
+/////////////////////////////////////////////
+   static String get_last_file_title(){
+     return viewstat?.getLastFilteTitle() ?? "";
+   }
+}
+
+class SharedPrefValue{
+
 }
 
 class ViewStat {
@@ -285,14 +340,11 @@ class AnnotationProp {
 
 class Annotate {
   String text="";
-  //List<Areadef> areas=[];
 
   String toString(){
     Map<String, String> answer = {};
     answer['text'] = text;
-    //answer['areas']="[]";
     final json = jsonEncode(answer);
     return json;
   }
 }
-//class Areadef {}
