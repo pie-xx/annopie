@@ -7,6 +7,7 @@ import 'package:flutter/src/services/keyboard_key.dart';
 
 import 'folder_prop.dart';
 import 'input_dialog.dart';
+import 'editarea_page.dart';
 
 class ImagePage extends StatefulWidget {
   ImagePage({Key? key, this.path}) : super(key: key);
@@ -18,13 +19,11 @@ class ImagePage extends StatefulWidget {
 class ImagePageState extends State<ImagePage> {
   late Uint8List imgbin;
 
-  late Image img; 
+    Image img= Image.asset("assets/img/default.jpg"); 
 
   int nextpagecount=0;
   int beforepagecount = 0;
   String curfile = "";
-
-  late ViewStat viewstat;
 
   bool _visible = true;
 
@@ -52,8 +51,7 @@ class ImagePageState extends State<ImagePage> {
   @override
   void initState() {
     curfile = widget.path??"";
-    viewstat = ViewStat(curfile);
-    areas = viewstat.getLastArea();
+    areas = FolderInfo.get_last_area();
     aindex=0;
 
     if(areas.length!=0){
@@ -114,19 +112,11 @@ class ImagePageState extends State<ImagePage> {
   ListTile mkditem( FileSystemEntity p, String title ){
 
     return ListTile(
-        //leading: leading,
         title: Text( title ),
-        //subtitle: Text( getbasename(p.path) ),
         onTap: () async {
-
           Navigator.pop(context);
-          
           await loadImage(p.path);
-
           setState(() {
-            viewstat.set_last_ainx(aindex);
-            viewstat.setLastPath(p.path);
-            viewstat.save();
           });
         },
         dense: false,
@@ -138,10 +128,6 @@ class ImagePageState extends State<ImagePage> {
     img = Image.memory(imgbin);
 
     curfile = path;
-    
-    viewstat = ViewStat(curfile);
-    viewstat.setLastPath(curfile);
-    viewstat.save();
   }
 
   @override
@@ -183,9 +169,10 @@ class ImagePageState extends State<ImagePage> {
       return Scaffold(
         appBar: PreferredSize(
           preferredSize: Size.fromHeight(32.0),
-          child: AppBar(title: appbarText, actions:[cdbtn,], )
+          child: AppBar(title: appbarText, 
+            leading:cdbtn, )
         ),       
-        drawer: Drawer(child: ListView(children: dis,),),         
+        endDrawer: Drawer(child: ListView(children: dis,),),         
         body: 
           iviewer,
         bottomNavigationBar:
@@ -219,9 +206,8 @@ class ImagePageState extends State<ImagePage> {
           await loadImage(p.path);
 
           setState(() {
-            viewstat.set_last_ainx(aindex);
-            viewstat.setLastPath(p.path);
-            viewstat.save();
+            FolderInfo.set_last_path(p.path);
+            print("nextpage ${p.path}");
           });
           return;
         }
@@ -241,10 +227,8 @@ class ImagePageState extends State<ImagePage> {
         if( p.path == curfile ){
           await loadImage(beforefile);
 
-          setState(() {
-            viewstat.set_last_ainx(aindex);
-            viewstat.setLastPath(beforefile);
-            viewstat.save();
+          setState(() async {
+            await FolderInfo.set_last_path(beforefile);
           });
           return;
         }
@@ -269,8 +253,7 @@ class ImagePageState extends State<ImagePage> {
     setState(() {
       areas.add(_transformationController.value);
       aindex = areas.length - 1;
-      viewstat.setLastArea(areas);
-      viewstat.save();
+      FolderInfo.set_last_area(areas);
     });
   }
 
@@ -278,8 +261,7 @@ class ImagePageState extends State<ImagePage> {
     setState(() {
       areas.clear();
       aindex = 0;
-      viewstat.setLastArea(areas);
-      viewstat.save();
+      FolderInfo.set_last_area(areas);
     });
   }
 
@@ -292,8 +274,6 @@ class ImagePageState extends State<ImagePage> {
     if( areas.length > 0 ){
       setState(() {
         _transformationController.value = areas[aindex];
-        viewstat.set_last_ainx(aindex);
-        viewstat.save();
       });
     }
   }
@@ -306,8 +286,6 @@ class ImagePageState extends State<ImagePage> {
     if( areas.length > 0 ){
       setState(() {
         _transformationController.value = areas[aindex];
-        viewstat.set_last_ainx(aindex);
-        viewstat.save();
       });
     }
   }
@@ -316,9 +294,7 @@ class ImagePageState extends State<ImagePage> {
     String gopath = FolderInfo.get_file_list()[pno].path;
     await loadImage(gopath);
     setState(() {
-      viewstat.set_last_ainx(0);
-      viewstat.setLastPath(gopath);
-      viewstat.save();
+      FolderInfo.set_last_path(gopath);
     });
   }
 }
@@ -340,8 +316,8 @@ class ImgPageBottomBar {
           ),
           BottomNavigationBarItem(
             backgroundColor: Colors.grey.shade400,
-            icon: Icon(Icons.announcement),
-            label: "annotation",
+            icon: Icon(Icons.settings),
+            label: "settings",
           ),
           BottomNavigationBarItem(
             backgroundColor: Colors.grey.shade400,
@@ -368,17 +344,13 @@ class ImgPageBottomBar {
           switch(label) {
             case "add": callback.addScale(); break; 
             case "clear": callback.clearScale(); break; 
-            case "annotation": 
-              String fname = callback.curfile;
-              var annoProp = AnnotationProp(fname);
-              var res = await inputDialog(context, 'Annotation', annoProp.readAnnotation(fname));
-              if( res != null ){   
-                  annoProp.writeAnnotation(fname, res);
-                  annoProp.save();
-                  await Future.delayed(Duration(seconds: 1));
-                  callback.setState(() {
-                  });
-              }
+            case "settings":
+               await Navigator.push(
+                  callback.context,
+                  MaterialPageRoute(
+                    builder: (context) => EditAreaPage(path: callback.curfile) 
+                  )
+                );
               break;
             case "page": 
               var res = await inputDialog(context, 'page', "" );

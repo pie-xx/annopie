@@ -16,6 +16,9 @@ class FolderInfo {
   final String statfile = "/.annofilers.json";
   static final String SFdir = "lastdir"; // 最終ディレクトリ
 
+  static String _lastpath = "";
+  static List<Matrix4> _lastarea = [];
+
   static Future<void> init(String dir) async {
     pref = await SharedPreferences.getInstance();
     set_last_dir(dir);
@@ -46,6 +49,9 @@ class FolderInfo {
     }
 
     viewstat = ViewStat(lastdir);
+    //viewstat?.reload();
+    _lastarea = viewstat?.getLastArea() ?? [];
+    _lastpath = viewstat?.getLastFileFullpath() ?? "";
     annoprop = AnnotationProp(lastdir);
   }
 
@@ -86,19 +92,30 @@ class FolderInfo {
   }
 ///////////////////////////////////////////////
 
-  static void set_last_path(String path){
-    viewstat?.setLastPath(path);
+  static Future<void> set_last_path(String path) async {
+    _lastpath = path;
+    await viewstat?.setLastPath(path);
+    viewstat?.save();
   }
   static String get_last_path(){
-    return (viewstat?.getLastFileFullpath()) ?? "";
+    return _lastpath;
   }
 
+  static Future<void> set_last_area( List<Matrix4> areas ) async {
+    _lastarea = areas;
+    viewstat?.setLastArea(areas);
+    viewstat?.save();
+  }
+  static List<Matrix4> get_last_area(){
+    //String areas = _lastarea.toString();
+    return _lastarea;
+  }
 
 
 
 /////////////////////////////////////////////
    static String get_last_file_title(){
-     return viewstat?.getLastFilteTitle() ?? "";
+     return ViewStat.getbasename(get_last_path());
    }
 }
 
@@ -142,7 +159,7 @@ class ViewStat {
     return path.substring(sp);
   }
 
-  void setLastPath(String fpath) async {
+  Future<void> setLastPath(String fpath) async {
     _lastpath = fpath;
     SharedPreferences pref = await SharedPreferences.getInstance();
     await pref.setString(KEYfile, _lastpath );
@@ -163,7 +180,7 @@ class ViewStat {
     return _lastcont;
   }
 
-  void setLastArea( List<Matrix4> areas ){
+  void setLastArea( List<Matrix4> areas ) {
     _lastarea = areas;
   }
   List<Matrix4> getLastArea(){
@@ -231,7 +248,7 @@ class ViewStat {
     }
   }
 
-  save() async {
+  Future<void> save() async {
     Map<String, dynamic> answer = {};
     answer[KEYfile] = getLastFilteTitle();
     answer[KEYcont] = _lastcont;
@@ -248,7 +265,7 @@ class ViewStat {
 
     try{
       await File(_lastdir+statfile).writeAsString(jsonstr);
-      await Future.delayed(Duration(seconds: 1));
+      await Future.delayed(Duration(milliseconds: 500));
     }catch(e){
       print(e);
     }
