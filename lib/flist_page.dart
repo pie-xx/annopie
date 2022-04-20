@@ -91,6 +91,7 @@ class FileListPageState extends State<FileListPage> {
 
   void itemOnTap(){
     if( FolderInfo.parentpath()==widget.olddir){
+      FolderInfo.load(FolderInfo.parentpath());
       Navigator.pop(this.context);
     }else{
       String ppath = FolderInfo.parentpath();
@@ -126,6 +127,7 @@ class FileListPageState extends State<FileListPage> {
                     tooltip: 'back',
                     onPressed: () async {
                       if(Navigator.canPop(context)){
+                        FolderInfo.load(widget.olddir??"");
                         Navigator.pop(context);
                       }
                     },
